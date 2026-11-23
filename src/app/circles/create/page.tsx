@@ -76,10 +76,10 @@ export default function CreateCirclePage() {
             <Sparkles className="w-3.5 h-3.5 text-swiggy-orange" />
             Recurring Campus Community
           </span>
-          <h1 className="text-3xl font-extrabold text-charcoal-900 tracking-tight">
+          <h1 className="text-3xl font-extrabold text-charcoal-900 dark:text-white tracking-tight">
             Create a Campus Circle
           </h1>
-          <p className="text-sm text-charcoal-500 max-w-md mx-auto">
+          <p className="text-sm text-charcoal-500 dark:text-slate-400 max-w-md mx-auto">
             Permanent group for your classmates, hostel floor, or project team. Invite members once and order together anytime.
           </p>
         </div>
@@ -88,7 +88,7 @@ export default function CreateCirclePage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Emoji Selection */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700">
+              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 dark:text-slate-300">
                 Circle Icon
               </label>
               <div className="flex flex-wrap gap-2">
@@ -100,7 +100,7 @@ export default function CreateCirclePage() {
                     className={`w-11 h-11 rounded-2xl text-xl flex items-center justify-center border transition ${
                       emoji === e
                         ? 'border-swiggy-orange bg-swiggy-light scale-105 shadow-sm'
-                        : 'border-charcoal-200 hover:bg-charcoal-50'
+                        : 'border-charcoal-200 dark:border-slate-700 hover:bg-charcoal-50 dark:bg-slate-800'
                     }`}
                   >
                     {e}
@@ -111,7 +111,7 @@ export default function CreateCirclePage() {
 
             {/* Circle Name */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700">
+              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 dark:text-slate-300">
                 Circle Name
               </label>
               <input
@@ -119,14 +119,14 @@ export default function CreateCirclePage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. CSE Lunch Squad, Hostel 3 West Wing, Roboclub Foodies"
-                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
+                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
                 required
               />
             </div>
 
             {/* Circle Type */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700">
+              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 dark:text-slate-300">
                 Group Category
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -138,7 +138,7 @@ export default function CreateCirclePage() {
                     className={`py-2 px-3 rounded-xl text-xs font-semibold border text-center transition ${
                       type === t
                         ? 'border-swiggy-orange bg-swiggy-light text-swiggy-dark font-bold'
-                        : 'border-charcoal-200 hover:bg-charcoal-50 text-charcoal-700'
+                        : 'border-charcoal-200 dark:border-slate-700 hover:bg-charcoal-50 dark:bg-slate-800 text-charcoal-700 dark:text-slate-300'
                     }`}
                   >
                     {t}
@@ -149,21 +149,21 @@ export default function CreateCirclePage() {
 
             {/* College Campus */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700">
+              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 dark:text-slate-300">
                 College Campus
               </label>
               <input
                 type="text"
                 value={college}
                 onChange={(e) => setCollege(e.target.value)}
-                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
+                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
                 required
               />
             </div>
 
             {/* Description */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700">
+              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 dark:text-slate-300">
                 Description & Ordering Cadence
               </label>
               <textarea
@@ -171,14 +171,14 @@ export default function CreateCirclePage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Daily lunch after 12:30 PM lab, late-night hackathon fuel, exam week snacks..."
                 rows={3}
-                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
+                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
               />
             </div>
 
             {/* Preferred Budget */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700">
+                <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 dark:text-slate-300">
                   Target Meal Budget per Member
                 </label>
                 <span className="text-sm font-black text-swiggy-orange">
@@ -222,8 +222,8 @@ export default function CreateCirclePage() {
         >
           <div className="space-y-5 pt-2">
             {/* Invite Code Box */}
-            <div className="rounded-2xl bg-charcoal-50 p-4 border border-charcoal-200 text-center space-y-1">
-              <p className="text-xs font-semibold text-charcoal-500 uppercase tracking-wider">
+            <div className="rounded-2xl bg-charcoal-50 dark:bg-slate-800 p-4 border border-charcoal-200 dark:border-slate-700 text-center space-y-1">
+              <p className="text-xs font-semibold text-charcoal-500 dark:text-slate-400 uppercase tracking-wider">
                 Circle 6-Letter Invite Code
               </p>
               <p className="text-3xl font-black font-mono tracking-widest text-swiggy-orange">
@@ -233,7 +233,7 @@ export default function CreateCirclePage() {
 
             {/* Shareable Link Box */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-charcoal-700">
+              <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300">
                 Shareable Invitation Link
               </label>
               <div className="flex items-center gap-2">
@@ -241,7 +241,7 @@ export default function CreateCirclePage() {
                   type="text"
                   readOnly
                   value={inviteLink}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-charcoal-200 bg-charcoal-50 font-mono text-charcoal-700"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-charcoal-200 dark:border-slate-700 bg-charcoal-50 dark:bg-slate-800 font-mono text-charcoal-700 dark:text-slate-300"
                 />
                 <Button
                   size="sm"

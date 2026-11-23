@@ -123,7 +123,7 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
       <div>
         <Link
           href={`/circles/${circleId}/restaurants`}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-charcoal-500 hover:text-charcoal-900 mb-4 transition"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-charcoal-500 dark:text-slate-400 hover:text-charcoal-900 dark:text-white mb-4 transition"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to Restaurants Catalog
@@ -131,7 +131,7 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
       </div>
 
       {/* Restaurant Header Banner */}
-      <div className="rounded-3xl bg-white border border-charcoal-100 p-6 sm:p-8 shadow-sm flex flex-col md:flex-row gap-6 items-start">
+      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-6 sm:p-8 shadow-sm flex flex-col md:flex-row gap-6 items-start">
         <div className="w-full md:w-56 h-40 rounded-2xl overflow-hidden relative flex-shrink-0 bg-charcoal-100">
           <Image
             src={restaurant.image}
@@ -144,7 +144,7 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
 
         <div className="flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-charcoal-900 tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-charcoal-900 dark:text-white tracking-tight">
               {restaurant.name}
             </h1>
             {restaurant.is_pure_veg && (
@@ -157,15 +157,15 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
             </Badge>
           </div>
 
-          <p className="text-xs sm:text-sm text-charcoal-500">
+          <p className="text-xs sm:text-sm text-charcoal-500 dark:text-slate-400">
             {restaurant.cuisine.join(' • ')} • Approx. {formatRupees(restaurant.price_for_one)} for one
           </p>
 
-          <p className="text-xs text-charcoal-600 leading-relaxed max-w-xl">
+          <p className="text-xs text-charcoal-600 dark:text-slate-400 leading-relaxed max-w-xl">
             {restaurant.tagline}
           </p>
 
-          <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-bold text-charcoal-700">
+          <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-bold text-charcoal-700 dark:text-slate-300">
             <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg">
               <Star className="w-3.5 h-3.5 fill-emerald-600 text-emerald-600" />
               {restaurant.rating} ({restaurant.rating_count})
@@ -201,11 +201,11 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
         {restaurant.menu_categories.map((category) => (
           <div key={category.id} className="space-y-4">
             <div>
-              <h2 className="text-xl font-extrabold text-charcoal-900 tracking-tight">
+              <h2 className="text-xl font-extrabold text-charcoal-900 dark:text-white tracking-tight">
                 {category.name}
               </h2>
               {category.description && (
-                <p className="text-xs text-charcoal-500 mt-0.5">{category.description}</p>
+                <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-0.5">{category.description}</p>
               )}
             </div>
 
@@ -217,7 +217,7 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
                 return (
                   <div
                     key={dish.id}
-                    className="rounded-3xl bg-white border border-charcoal-100 p-4 sm:p-6 shadow-sm hover:border-charcoal-200 transition flex flex-col sm:flex-row justify-between gap-4"
+                    className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-4 sm:p-6 shadow-sm hover:border-charcoal-200 dark:border-slate-700 transition flex flex-col sm:flex-row justify-between gap-4"
                   >
                     {/* Left: Dish Details */}
                     <div className="space-y-2 flex-1">
@@ -241,15 +241,15 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
                         )}
                       </div>
 
-                      <h3 className="font-extrabold text-base text-charcoal-900">
+                      <h3 className="font-extrabold text-base text-charcoal-900 dark:text-white">
                         {dish.name}
                       </h3>
 
-                      <p className="text-sm font-black text-charcoal-900">
+                      <p className="text-sm font-black text-charcoal-900 dark:text-white">
                         {formatPaise(dish.price_paise)}
                       </p>
 
-                      <p className="text-xs text-charcoal-500 leading-relaxed max-w-lg">
+                      <p className="text-xs text-charcoal-500 dark:text-slate-400 leading-relaxed max-w-lg">
                         {dish.description}
                       </p>
                     </div>
@@ -292,13 +292,13 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
 
       {/* Floating Bottom Bar if User has items */}
       {myCartItems.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-charcoal-200 shadow-2xl p-4">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-charcoal-200 dark:border-slate-700 shadow-2xl p-4">
           <div className="max-w-5xl mx-auto flex items-center justify-between">
             <div>
-              <p className="text-xs text-charcoal-500 font-semibold">
+              <p className="text-xs text-charcoal-500 dark:text-slate-400 font-semibold">
                 Your Selection ({myCartItems.reduce((s, i) => s + i.quantity, 0)} items)
               </p>
-              <p className="text-base font-black text-charcoal-900">
+              <p className="text-base font-black text-charcoal-900 dark:text-white">
                 {formatPaise(mySubtotalPaise)}
               </p>
             </div>
