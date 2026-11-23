@@ -38,10 +38,10 @@ export default function JoinCirclePage({ params }: JoinPageProps) {
         <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto">
           <AlertCircle className="w-6 h-6" />
         </div>
-        <h1 className="text-2xl font-extrabold text-charcoal-900">
+        <h1 className="text-2xl font-extrabold text-charcoal-900 dark:text-white">
           Circle Not Found
         </h1>
-        <p className="text-xs text-charcoal-500">
+        <p className="text-xs text-charcoal-500 dark:text-slate-400">
           The invite code &quot;{inviteCode}&quot; does not match any active campus circles or may have expired.
         </p>
         <div className="pt-2">
@@ -74,10 +74,10 @@ export default function JoinCirclePage({ params }: JoinPageProps) {
 
   return (
     <div className="max-w-md mx-auto px-4 py-12">
-      <Card className="rounded-3xl shadow-xl border-charcoal-200/80 p-6 sm:p-8 space-y-6">
+      <Card className="rounded-3xl shadow-xl border-charcoal-200 dark:border-slate-700/80 p-6 sm:p-8 space-y-6">
         {/* Circle Card Presentation */}
         <div className="text-center space-y-3">
-          <div className="w-16 h-16 rounded-3xl bg-charcoal-50 border border-charcoal-100 flex items-center justify-center text-3xl mx-auto shadow-sm">
+          <div className="w-16 h-16 rounded-3xl bg-charcoal-50 dark:bg-slate-800 border border-charcoal-100 dark:border-slate-800 flex items-center justify-center text-3xl mx-auto shadow-sm">
             {circle.emoji || '🍱'}
           </div>
 
@@ -85,21 +85,21 @@ export default function JoinCirclePage({ params }: JoinPageProps) {
             <Badge variant="orange" size="sm" className="mb-1.5 font-bold">
               {circle.type} Circle
             </Badge>
-            <h1 className="text-2xl font-black text-charcoal-900 tracking-tight">
+            <h1 className="text-2xl font-black text-charcoal-900 dark:text-white tracking-tight">
               {circle.name}
             </h1>
-            <p className="text-xs text-charcoal-500 font-medium mt-1">
+            <p className="text-xs text-charcoal-500 dark:text-slate-400 font-medium mt-1">
               {circle.college}
             </p>
           </div>
 
-          <p className="text-xs text-charcoal-600 leading-relaxed bg-charcoal-50 p-3 rounded-2xl border border-charcoal-100">
+          <p className="text-xs text-charcoal-600 dark:text-slate-400 leading-relaxed bg-charcoal-50 dark:bg-slate-800 p-3 rounded-2xl border border-charcoal-100 dark:border-slate-800">
             {circle.description || 'Join this circle to plan orders and split delivery fees together.'}
           </p>
         </div>
 
         {/* Member Preview */}
-        <div className="p-3.5 rounded-2xl bg-white border border-charcoal-100 flex items-center justify-between">
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex -space-x-2 overflow-hidden">
               {members.slice(0, 4).map((m, idx) => (
@@ -118,7 +118,7 @@ export default function JoinCirclePage({ params }: JoinPageProps) {
                 </div>
               ))}
             </div>
-            <span className="text-xs font-bold text-charcoal-800">
+            <span className="text-xs font-bold text-charcoal-800 dark:text-slate-200">
               {members.length} {members.length === 1 ? 'member' : 'members'}
             </span>
           </div>
@@ -129,11 +129,11 @@ export default function JoinCirclePage({ params }: JoinPageProps) {
         </div>
 
         {/* Current Active Persona Banner */}
-        <div className="border-t border-charcoal-100 pt-4 space-y-2">
+        <div className="border-t border-charcoal-100 dark:border-slate-800 pt-4 space-y-2">
           <p className="text-[11px] font-bold uppercase tracking-wider text-charcoal-400">
             Joining as:
           </p>
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-charcoal-50 border border-charcoal-100">
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-charcoal-50 dark:bg-slate-800 border border-charcoal-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full overflow-hidden relative border border-white">
                 <Image
@@ -146,8 +146,8 @@ export default function JoinCirclePage({ params }: JoinPageProps) {
                 />
               </div>
               <div>
-                <p className="text-xs font-bold text-charcoal-900">{currentUser.full_name}</p>
-                <p className="text-[10px] text-charcoal-500">{currentUser.dietary_pref}</p>
+                <p className="text-xs font-bold text-charcoal-900 dark:text-white">{currentUser.full_name}</p>
+                <p className="text-[10px] text-charcoal-500 dark:text-slate-400">{currentUser.dietary_pref}</p>
               </div>
             </div>
 

@@ -26,6 +26,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const {
     currentUser,
+    isAuthenticated,
     getUserCircles,
     getCircleMembers,
     getSession,
@@ -33,6 +34,12 @@ export default function DashboardPage() {
     getCircleByInviteCode,
     joinCircle,
   } = useApp();
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/auth');
+    }
+  }, [isAuthenticated, router]);
 
   const userCircles = getUserCircles();
   const userOrders = getOrdersForUser();
@@ -79,23 +86,23 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-[#FAFAF8] dark:bg-slate-950 min-h-screen transition-colors">
       {/* Background Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-orange-200/20 via-transparent to-transparent blur-[120px] -z-10 pointer-events-none rounded-full" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-orange-200/20 dark:from-orange-500/10 via-transparent to-transparent blur-[120px] -z-10 pointer-events-none rounded-full" />
 
       {/* 1. Header & Welcome Area */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/30">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-charcoal-200/60 dark:border-slate-800">
         <div>
-          <div className="inline-flex items-center gap-2 glass-pill px-3 py-1 rounded-full text-xs font-semibold text-charcoal-700 mb-3">
+          <div className="inline-flex items-center gap-2 glass-pill dark:bg-slate-900 dark:border-slate-800 px-3 py-1 rounded-full text-xs font-semibold text-charcoal-700 dark:text-slate-300 mb-3">
             <Calendar className="w-3.5 h-3.5 text-swiggy-orange" />
             <span>{todayFormatted}</span>
-            <span className="text-white/50">•</span>
-            <span className="text-charcoal-700 font-bold">{currentUser.college}</span>
+            <span className="text-charcoal-300 dark:text-slate-700">•</span>
+            <span className="text-charcoal-700 dark:text-slate-200 font-bold">{currentUser.college}</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-charcoal-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-black text-charcoal-900 dark:text-white tracking-tight flex items-center gap-2">
             Welcome back, {currentUser.full_name.split(' ')[0]}! 👋
           </h1>
-          <p className="text-xs sm:text-sm text-charcoal-500 mt-1">
+          <p className="text-xs sm:text-sm text-charcoal-500 dark:text-slate-400 mt-1">
             Manage your food circles, coordinate meals, and save delivery costs with classmates.
           </p>
         </div>
@@ -106,14 +113,14 @@ export default function DashboardPage() {
             variant="outline"
             size="md"
             onClick={() => setJoinModalOpen(true)}
-            className="glass-pill rounded-2xl gap-2 text-xs font-bold"
+            className="glass-pill dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200 rounded-2xl gap-2 text-xs font-bold"
           >
-            <KeyRound className="w-4 h-4 text-charcoal-600" />
+            <KeyRound className="w-4 h-4 text-charcoal-600 dark:text-slate-400" />
             Join Circle
           </Button>
 
           <Link href="/circles/create">
-            <Button size="md" className="rounded-2xl gap-2 text-xs font-bold shadow-highlight">
+            <Button size="md" className="rounded-2xl gap-2 text-xs font-bold shadow-highlight bg-gradient-to-r from-swiggy-orange to-orange-600 text-white border-none">
               <Plus className="w-4 h-4" />
               Create Circle
             </Button>
@@ -126,7 +133,7 @@ export default function DashboardPage() {
         <div className="absolute right-0 top-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wider">
+            <div className="inline-flex items-center gap-2 bg-white/25 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
               <span>Phase 2 Live: CircleMatch AI</span>
             </div>
@@ -141,7 +148,7 @@ export default function DashboardPage() {
             <Link href={`/circles/${userCircles[0].id}`}>
               <Button
                 size="lg"
-                className="bg-white text-swiggy-orange hover:bg-orange-50 font-black text-sm px-6 py-5 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2 whitespace-nowrap"
+                className="bg-white text-swiggy-orange hover:bg-orange-50 font-black text-sm px-6 py-5 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2 whitespace-nowrap border-none"
               >
                 <Sparkles className="w-4 h-4 text-swiggy-orange animate-pulse" />
                 <span>Launch CircleMatch AI ✨</span>
@@ -153,24 +160,24 @@ export default function DashboardPage() {
 
       {/* 2. Active Session Alert (If any) */}
       {activeSessionCircle && activeSession && (
-        <div className="rounded-[2.5rem] glass-card border-white/40 shadow-glass p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="rounded-[2.5rem] glass-card dark:bg-slate-900 dark:border-slate-800 p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl glass-pill bg-white/30 flex items-center justify-center text-2xl flex-shrink-0 border border-white/30">
+            <div className="w-12 h-12 rounded-2xl glass-pill dark:bg-slate-800 dark:border-slate-700 flex items-center justify-center text-2xl flex-shrink-0">
               {activeSessionCircle.emoji || '🍱'}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold glass-pill bg-swiggy-orange/20 text-swiggy-orange px-2.5 py-1 rounded-full uppercase tracking-wider">
+                <span className="text-xs font-bold glass-pill dark:bg-orange-500/20 dark:border-orange-500/30 text-swiggy-orange dark:text-orange-400 px-2.5 py-1 rounded-full uppercase tracking-wider">
                   Active Order Session
                 </span>
-                <span className="text-xs text-charcoal-400">• {activeSessionCircle.name}</span>
+                <span className="text-xs text-charcoal-400 dark:text-slate-400">• {activeSessionCircle.name}</span>
               </div>
-              <h3 className="text-lg font-black mt-1 text-charcoal-900">
+              <h3 className="text-lg font-black mt-1 text-charcoal-900 dark:text-white">
                 Ordering from {activeSession.restaurant_name}
               </h3>
-              <p className="text-xs text-charcoal-500 flex items-center gap-1.5 mt-0.5">
+              <p className="text-xs text-charcoal-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
                 <Clock className="w-3.5 h-3.5 text-swiggy-orange" />
-                Status: <strong className="uppercase text-charcoal-700">{activeSession.status}</strong> • Drop Point: {activeSession.delivery_location}
+                Status: <strong className="uppercase text-charcoal-700 dark:text-slate-200">{activeSession.status}</strong> • Drop Point: {activeSession.delivery_location}
               </p>
             </div>
           </div>
@@ -179,7 +186,7 @@ export default function DashboardPage() {
             <Button
               variant="secondary"
               size="md"
-              className="w-full md:w-auto font-black text-xs px-5 rounded-xl glass-card border-swiggy-orange/30 text-charcoal-900 hover:bg-white/50 gap-2"
+              className="w-full md:w-auto font-black text-xs px-5 rounded-xl glass-card dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 hover:bg-white/50 gap-2"
             >
               <ShoppingBag className="w-4 h-4 text-swiggy-orange" />
               <span>Enter Group Cart</span>
@@ -190,32 +197,32 @@ export default function DashboardPage() {
 
       {/* 3. Metrics Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-2xl glass-card p-4 shadow-glass border-white/60 flex items-center justify-between hover:shadow-glass transition-shadow duration-300">
+        <div className="rounded-2xl glass-card dark:bg-slate-900 dark:border-slate-800 p-4 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-charcoal-500 uppercase tracking-wide">My Circles</p>
-            <p className="text-2xl font-black text-charcoal-900 mt-1">{userCircles.length}</p>
+            <p className="text-xs font-bold text-charcoal-500 dark:text-slate-400 uppercase tracking-wide">My Circles</p>
+            <p className="text-2xl font-black text-charcoal-900 dark:text-white mt-1">{userCircles.length}</p>
           </div>
-          <div className="w-10 h-10 rounded-xl glass-pill text-swiggy-orange flex items-center justify-center border border-swiggy-orange/20 bg-swiggy-orange/10">
+          <div className="w-10 h-10 rounded-xl glass-pill dark:bg-slate-800 dark:border-slate-700 text-swiggy-orange flex items-center justify-center">
             <Users className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="rounded-2xl glass-card p-4 shadow-glass border-white/60 flex items-center justify-between hover:shadow-glass transition-shadow duration-300">
+        <div className="rounded-2xl glass-card dark:bg-slate-900 dark:border-slate-800 p-4 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-charcoal-500 uppercase tracking-wide">Delivery Fees Saved</p>
-            <p className="text-2xl font-black text-emerald-600 mt-1">₹320</p>
+            <p className="text-xs font-bold text-charcoal-500 dark:text-slate-400 uppercase tracking-wide">Delivery Fees Saved</p>
+            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">₹320</p>
           </div>
-          <div className="w-10 h-10 rounded-xl glass-pill text-emerald-600 flex items-center justify-center border border-emerald-500/20 bg-emerald-50/50">
+          <div className="w-10 h-10 rounded-xl glass-pill dark:bg-slate-800 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
             <TrendingDown className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="rounded-2xl glass-card p-4 shadow-glass border-white/60 flex items-center justify-between hover:shadow-glass transition-shadow duration-300">
+        <div className="rounded-2xl glass-card dark:bg-slate-900 dark:border-slate-800 p-4 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-charcoal-500 uppercase tracking-wide">Target Meal Budget</p>
-            <p className="text-2xl font-black text-charcoal-900 mt-1">₹{currentUser.preferred_budget}</p>
+            <p className="text-xs font-bold text-charcoal-500 dark:text-slate-400 uppercase tracking-wide">Target Meal Budget</p>
+            <p className="text-2xl font-black text-charcoal-900 dark:text-white mt-1">₹{currentUser.preferred_budget}</p>
           </div>
-          <div className="w-10 h-10 rounded-xl glass-pill text-swiggy-orange flex items-center justify-center border border-swiggy-orange/20 bg-swiggy-orange/10">
+          <div className="w-10 h-10 rounded-xl glass-pill dark:bg-slate-800 dark:border-slate-700 text-swiggy-orange flex items-center justify-center">
             <Sparkles className="w-5 h-5" />
           </div>
         </div>
@@ -225,34 +232,34 @@ export default function DashboardPage() {
       <div id="circles" className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-black text-charcoal-900 tracking-tight">
+            <h2 className="text-xl font-black text-charcoal-900 dark:text-white tracking-tight">
               My Campus Circles
             </h2>
-            <p className="text-xs text-charcoal-500">
+            <p className="text-xs text-charcoal-500 dark:text-slate-400">
               Your recurring groups for daily meals, hostel orders, and late-night snacks
             </p>
           </div>
         </div>
 
         {userCircles.length === 0 ? (
-          <div className="rounded-[2.5rem] glass-card border-white/40 shadow-glass p-8 text-center space-y-4">
-            <div className="w-12 h-12 rounded-2xl glass-pill text-swiggy-orange flex items-center justify-center mx-auto text-xl border border-swiggy-orange/20 bg-swiggy-orange/10">
+          <div className="rounded-[2.5rem] glass-card dark:bg-slate-900 dark:border-slate-800 p-8 text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl glass-pill dark:bg-slate-800 text-swiggy-orange flex items-center justify-center mx-auto text-xl">
               🍕
             </div>
             <div>
-              <h3 className="font-black text-base text-charcoal-900">
+              <h3 className="font-black text-base text-charcoal-900 dark:text-white">
                 You haven&apos;t joined any Circles yet
               </h3>
-              <p className="text-xs text-charcoal-500 max-w-sm mx-auto mt-1">
+              <p className="text-xs text-charcoal-500 dark:text-slate-400 max-w-sm mx-auto mt-1">
                 Create a circle for your hostel roommates or join an existing circle with an invite code.
               </p>
             </div>
             <div className="flex justify-center gap-3">
-              <Button size="sm" onClick={() => setJoinModalOpen(true)} variant="outline" className="glass-pill">
+              <Button size="sm" onClick={() => setJoinModalOpen(true)} variant="outline" className="glass-pill dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200">
                 Join with Code
               </Button>
               <Link href="/circles/create">
-                <Button size="sm" className="rounded-xl shadow-highlight">Create Circle</Button>
+                <Button size="sm" className="rounded-xl shadow-highlight bg-swiggy-orange text-white">Create Circle</Button>
               </Link>
             </div>
           </div>
@@ -266,47 +273,47 @@ export default function DashboardPage() {
               return (
                 <div
                   key={circle.id}
-                  className="rounded-[2rem] glass-card p-6 shadow-glass border-white/40 hover:shadow-glass hover:border-white/60 transition-all flex flex-col justify-between group"
+                  className="rounded-[2rem] glass-card dark:bg-slate-900 dark:border-slate-800 p-6 shadow-sm hover:shadow-card-hover transition-all flex flex-col justify-between group"
                 >
                   <div>
                     {/* Card Top: Emoji & Status */}
                     <div className="flex items-start justify-between mb-4">
-                      <div className="w-12 h-12 rounded-2xl glass-pill border border-white/30 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform bg-white/30">
+                      <div className="w-12 h-12 rounded-2xl glass-pill dark:bg-slate-800 dark:border-slate-700 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
                         {circle.emoji || '🍱'}
                       </div>
 
                       {session?.status === 'open' ? (
-                        <Badge variant="success" size="sm" className="font-bold animate-pulse glass-pill bg-emerald-50/50 border-emerald-200 text-emerald-700">
+                        <Badge variant="success" size="sm" className="font-bold animate-pulse">
                           Order Open
                         </Badge>
                       ) : session?.status === 'locked' ? (
-                        <Badge variant="warning" size="sm" className="font-bold glass-pill bg-amber-50/50 border-amber-200 text-amber-700">
+                        <Badge variant="warning" size="sm" className="font-bold">
                           Cart Locked
                         </Badge>
                       ) : (
-                        <Badge variant="default" size="sm" className="glass-pill bg-charcoal-50 border-charcoal-200 text-charcoal-600">
+                        <Badge variant="default" size="sm" className="dark:bg-slate-800 dark:text-slate-300">
                           Idle
                         </Badge>
                       )}
                     </div>
 
                     {/* Circle Name & Details */}
-                    <h3 className="font-black text-lg text-charcoal-900 group-hover:text-swiggy-orange transition-colors">
+                    <h3 className="font-black text-lg text-charcoal-900 dark:text-white group-hover:text-swiggy-orange transition-colors">
                       {circle.name}
                     </h3>
-                    <p className="text-xs text-charcoal-500 line-clamp-2 mt-1">
+                    <p className="text-xs text-charcoal-500 dark:text-slate-400 line-clamp-2 mt-1">
                       {circle.description || 'Active campus group'}
                     </p>
 
                     <div className="mt-3 flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" size="sm" className="text-[10px] glass-pill bg-white/50 border-charcoal-200 text-charcoal-600">
+                      <Badge variant="outline" size="sm" className="text-[10px] dark:border-slate-700 dark:text-slate-300">
                         {circle.type}
                       </Badge>
-                      <Badge variant="orange" size="sm" className="text-[10px] glass-pill bg-swiggy-orange/10 border-swiggy-orange/20 text-swiggy-orange">
+                      <Badge variant="orange" size="sm" className="text-[10px] dark:bg-orange-500/20 dark:border-orange-500/30 dark:text-orange-400">
                         Budget: ₹{circle.preferred_budget}/meal
                       </Badge>
                       {isUserAdmin && (
-                        <Badge variant="neutral" size="sm" className="text-[10px] glass-pill bg-blue-50 border-blue-200 text-blue-700">
+                        <Badge variant="neutral" size="sm" className="text-[10px] dark:bg-blue-950 dark:border-blue-800 dark:text-blue-300">
                           Admin
                         </Badge>
                       )}
@@ -314,13 +321,13 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Card Bottom: Member Avatars & Enter Button */}
-                  <div className="mt-6 pt-4 border-t border-white/30 flex items-center justify-between">
+                  <div className="mt-6 pt-4 border-t border-charcoal-100 dark:border-slate-800 flex items-center justify-between">
                     <div className="flex items-center">
                       <div className="flex -space-x-2 overflow-hidden">
                         {members.slice(0, 4).map((m, idx) => (
                           <div
                             key={idx}
-                            className="inline-block h-7 w-7 rounded-full ring-2 ring-white overflow-hidden relative border border-white/20"
+                            className="inline-block h-7 w-7 rounded-full ring-2 ring-white dark:ring-slate-900 overflow-hidden relative border border-charcoal-200 dark:border-slate-700"
                           >
                             <Image
                               src={m.profile.avatar_url || ''}
@@ -333,14 +340,14 @@ export default function DashboardPage() {
                           </div>
                         ))}
                       </div>
-                      <span className="text-[11px] font-bold text-charcoal-500 ml-2">
+                      <span className="text-[11px] font-bold text-charcoal-500 dark:text-slate-400 ml-2">
                         {members.length} {members.length === 1 ? 'member' : 'members'}
                       </span>
                     </div>
 
                     <Link href={`/circles/${circle.id}`}>
-                      <Button size="sm" className="rounded-xl text-xs font-bold gap-1 shadow-glass glass-card border-white/40 hover:border-swiggy-orange/50 transition-colors">
-                        <Sparkles className="w-3.5 h-3.5 text-swiggy-orange" />
+                      <Button size="sm" className="rounded-xl text-xs font-bold gap-1 bg-swiggy-orange text-white hover:bg-swiggy-hover">
+                        <Sparkles className="w-3.5 h-3.5" />
                         <span>AI Match</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </Button>
@@ -357,17 +364,17 @@ export default function DashboardPage() {
       <div className="space-y-4 pt-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-extrabold text-charcoal-900 tracking-tight">
+            <h2 className="text-xl font-extrabold text-charcoal-900 dark:text-white tracking-tight">
               Recent Circle Orders
             </h2>
-            <p className="text-xs text-charcoal-500">
+            <p className="text-xs text-charcoal-500 dark:text-slate-400">
               Track simulated order status, itemized receipts, and member contributions
             </p>
           </div>
         </div>
 
         {userOrders.length === 0 ? (
-          <div className="rounded-2xl bg-white border border-charcoal-100 p-6 text-center text-xs text-charcoal-500">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 p-6 text-center text-xs text-charcoal-500 dark:text-slate-400">
             No past orders found. Finalize a group order in one of your circles to see it here!
           </div>
         ) : (
@@ -380,7 +387,7 @@ export default function DashboardPage() {
               return (
                 <div
                   key={order.id}
-                  className="rounded-2xl bg-white border border-charcoal-100 p-4 sm:p-5 shadow-sm hover:border-charcoal-200 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  className="rounded-2xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 p-4 sm:p-5 shadow-sm hover:border-charcoal-200 dark:hover:border-slate-700 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -390,25 +397,25 @@ export default function DashboardPage() {
                       <Badge variant="success" size="sm" className="text-[10px] uppercase font-bold">
                         {order.status}
                       </Badge>
-                      <span className="text-xs text-charcoal-400">•</span>
-                      <span className="text-xs text-charcoal-600 font-semibold">{order.circle_name}</span>
+                      <span className="text-xs text-charcoal-400 dark:text-slate-500">•</span>
+                      <span className="text-xs text-charcoal-600 dark:text-slate-300 font-semibold">{order.circle_name}</span>
                     </div>
 
-                    <h4 className="text-base font-bold text-charcoal-900">
+                    <h4 className="text-base font-bold text-charcoal-900 dark:text-white">
                       {order.restaurant_name}
                     </h4>
 
-                    <p className="text-xs text-charcoal-500">
+                    <p className="text-xs text-charcoal-500 dark:text-slate-400">
                       {order.total_items_count} dishes • Delivered to {order.delivery_location}
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-t-0 pt-3 sm:pt-0 border-charcoal-100">
+                  <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-t-0 pt-3 sm:pt-0 border-charcoal-100 dark:border-slate-800">
                     <div className="text-right">
-                      <p className="text-xs text-charcoal-500">
+                      <p className="text-xs text-charcoal-500 dark:text-slate-400">
                         {myContribution ? 'Your Share' : 'Group Total'}
                       </p>
-                      <p className="text-base font-black text-charcoal-900">
+                      <p className="text-base font-black text-charcoal-900 dark:text-white">
                         {myContribution
                           ? formatPaise(myContribution.share_paise)
                           : formatPaise(order.total_paise)}
@@ -416,7 +423,7 @@ export default function DashboardPage() {
                     </div>
 
                     <Link href={`/circles/${order.circle_id}/orders/${order.id}`}>
-                      <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold">
+                      <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
                         View Tracking
                       </Button>
                     </Link>
@@ -440,7 +447,7 @@ export default function DashboardPage() {
       >
         <form onSubmit={handleJoinByCode} className="space-y-4 mt-2">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 dark:text-slate-300 mb-1.5">
               Invite Code
             </label>
             <input
@@ -449,14 +456,14 @@ export default function DashboardPage() {
               onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
               placeholder="CAMPUS24"
               maxLength={8}
-              className="w-full px-4 py-3 text-center font-mono text-lg font-bold tracking-widest rounded-2xl border border-charcoal-200 focus:outline-none focus:ring-2 focus:ring-swiggy-orange uppercase"
+              className="w-full px-4 py-3 text-center font-mono text-lg font-bold tracking-widest rounded-2xl border border-charcoal-200 dark:border-slate-700 bg-charcoal-50/50 dark:bg-slate-800 text-charcoal-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-swiggy-orange uppercase"
               autoFocus
               required
             />
           </div>
 
           {joinError && (
-            <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">
+            <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-2.5 rounded-xl border border-red-200 dark:border-red-900">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span>{joinError}</span>
             </div>
@@ -467,12 +474,12 @@ export default function DashboardPage() {
               type="button"
               variant="outline"
               size="md"
-              className="flex-1 rounded-xl"
+              className="flex-1 rounded-xl dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               onClick={() => setJoinModalOpen(false)}
             >
               Cancel
             </Button>
-            <Button type="submit" size="md" className="flex-1 rounded-xl font-bold">
+            <Button type="submit" size="md" className="flex-1 rounded-xl font-bold bg-swiggy-orange text-white">
               Join Circle
             </Button>
           </div>

@@ -101,19 +101,15 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
       let defaultHunger: HungerLevel = 'regular';
 
       if (m.user_id.endsWith('1')) {
-        // Aarav (Admin)
         defaultCravings = ['North Indian', 'High protein'];
         defaultHunger = 'regular';
       } else if (m.user_id.endsWith('2')) {
-        // Ananya (Strict Veg)
         defaultCravings = ['Comfort food', 'Light meal'];
         defaultHunger = 'light';
       } else if (m.user_id.endsWith('3')) {
-        // Rohan (Non-Veg)
         defaultCravings = ['Spicy', 'Fast food'];
         defaultHunger = 'hungry';
       } else if (m.user_id.endsWith('4')) {
-        // Priya (Veg ECE)
         defaultCravings = ['South Indian', 'Surprise me'];
         defaultHunger = 'regular';
       }

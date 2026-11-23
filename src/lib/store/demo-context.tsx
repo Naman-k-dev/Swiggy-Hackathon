@@ -45,9 +45,22 @@ import {
   getJudgeDemoRescueScenarios,
 } from '@/lib/rescue/order-rescue-engine';
 
+export const GUEST_USER: StudentProfile = {
+  id: 'student-guest',
+  full_name: 'Guest User',
+  email: 'guest@campus.edu',
+  avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest',
+  college: 'Select Campus',
+  academic_year: 'Student',
+  dietary_pref: 'BOTH',
+  preferred_budget: 250,
+};
+
 interface AppContextType {
   // Current user & personas
   currentUser: StudentProfile;
+  isAuthenticated: boolean;
+  logout: () => void;
   personas: StudentProfile[];
   switchPersona: (personaId: string) => void;
   updateProfile: (data: Partial<StudentProfile>) => void;
@@ -170,10 +183,21 @@ interface AppContextType {
   isRealtimeConnected: boolean;
   isSupabaseActive: boolean;
   resetDemoData: () => void;
+  // Theme & Profile Creation
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+  addProfile: (data: {
+    full_name: string;
+    college: string;
+    avatar_url?: string;
+    dietary_preference?: 'veg' | 'non-veg' | 'flexible';
+    preferred_budget?: number;
+  }) => void;
 }
 
 const STORAGE_KEYS = {
   USER: 'scc_current_user_v1',
+  PERSONAS: 'scc_personas_v1',
   CIRCLES: 'scc_circles_v1',
   MEMBERS: 'scc_members_v1',
   SESSIONS: 'scc_sessions_v1',
@@ -182,13 +206,110 @@ const STORAGE_KEYS = {
   MEAL_WINDOWS: 'scc_meal_windows_v1',
   VOTE_SESSIONS: 'scc_vote_sessions_v1',
   RESCUE_ISSUE: 'scc_rescue_issue_v1',
+  THEME: 'scc_theme_v1',
 };
 
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   // State
-  const [currentUser, setCurrentUser] = useState<StudentProfile>(DEMO_PERSONAS[0]);
+  const [currentUser, setCurrentUser] = useState<StudentProfile>(() => {
+    if (typeof window === 'undefined') return GUEST_USER;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.USER);
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return GUEST_USER;
+  });
+
+  const isAuthenticated = currentUser.id !== 'student-guest';
+
+  const logout = useCallback(() => {
+    setCurrentUser(GUEST_USER);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(STORAGE_KEYS.USER);
+      } catch {}
+    }
+    if (isSupabaseConfigured && supabase) {
+      supabase.auth.signOut().catch(() => {});
+    }
+  }, []);
+  const [personas, setPersonas] = useState<StudentProfile[]>(() => {
+    if (typeof window === 'undefined') return DEMO_PERSONAS;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.PERSONAS);
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return DEMO_PERSONAS;
+  });
+
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window === 'undefined') return 'light';
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.THEME);
+      if (stored === 'dark' || stored === 'light') return stored;
+    } catch {}
+    return 'light';
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    try {
+      localStorage.setItem(STORAGE_KEYS.THEME, theme);
+    } catch {}
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  }, []);
+
+  const addProfile = useCallback(
+    (data: {
+      full_name: string;
+      college: string;
+      avatar_url?: string;
+      dietary_preference?: 'veg' | 'non-veg' | 'flexible';
+      preferred_budget?: number;
+    }) => {
+      const newId = `student-custom-${Date.now()}`;
+      const newProfile: StudentProfile = {
+        id: newId,
+        full_name: data.full_name,
+        email: `${data.full_name.toLowerCase().replace(/\s+/g, '')}@campus.edu`,
+        avatar_url: data.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.full_name)}`,
+        college: data.college,
+        academic_year: 'Student',
+        dietary_pref: data.dietary_preference === 'veg' ? 'VEG' : data.dietary_preference === 'non-veg' ? 'NON_VEG' : 'BOTH',
+        preferred_budget: data.preferred_budget || 250,
+        updated_at: new Date().toISOString(),
+      };
+
+      setPersonas((prev) => {
+        const updated = [...prev, newProfile];
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(STORAGE_KEYS.PERSONAS, JSON.stringify(updated));
+          } catch {}
+        }
+        return updated;
+      });
+
+      setCurrentUser(newProfile);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(newProfile));
+        } catch {}
+      }
+    },
+    []
+  );
+
   const [circles, setCircles] = useState<Circle[]>(INITIAL_CIRCLES);
   const [members, setMembers] = useState<CircleMember[]>(INITIAL_CIRCLE_MEMBERS);
   const [sessions, setSessions] = useState<OrderingSession[]>(INITIAL_SESSIONS);
@@ -350,7 +471,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Switch active persona
   const switchPersona = useCallback(
     (personaId: string) => {
-      const target = DEMO_PERSONAS.find((p) => p.id === personaId);
+      const target = personas.find((p) => p.id === personaId);
       if (target) {
         setCurrentUser(target);
         if (typeof window !== 'undefined') {
@@ -358,7 +479,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
     },
-    []
+    [personas]
   );
 
   // Update profile
@@ -505,7 +626,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (circleId: string) => {
       const circleMemberships = members.filter((m) => m.circle_id === circleId);
       return circleMemberships.map((m) => {
-        const found = DEMO_PERSONAS.find((p) => p.id === m.user_id) || {
+        const found = personas.find((p) => p.id === m.user_id) || {
           id: m.user_id,
           full_name: m.user_id === currentUser.id ? currentUser.full_name : 'Fellow Student',
           email: `${m.user_id}@campus.edu`,
@@ -521,7 +642,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return { ...m, profile: found };
       });
     },
-    [members, currentUser]
+    [members, currentUser, personas]
   );
 
   // Check if current user is circle admin
@@ -1686,7 +1807,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(
     () => ({
       currentUser,
-      personas: DEMO_PERSONAS,
+      personas,
       switchPersona,
       updateProfile,
       circles,
@@ -1738,9 +1859,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       acceptRescueReplacement,
       dismissRescueIssue,
       getJudgeDemoScenarios,
+      theme,
+      toggleTheme,
+      addProfile,
+      isAuthenticated,
+      logout,
     }),
     [
       currentUser,
+      isAuthenticated,
+      logout,
+      personas,
       switchPersona,
       updateProfile,
       circles,
@@ -1789,6 +1918,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       acceptRescueReplacement,
       dismissRescueIssue,
       getJudgeDemoScenarios,
+      theme,
+      toggleTheme,
+      addProfile,
     ]
   );
 

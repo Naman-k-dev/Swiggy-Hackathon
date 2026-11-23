@@ -205,16 +205,16 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
       {/* 1. Circle Header Banner */}
-      <div className="rounded-3xl bg-white border border-charcoal-100 p-6 sm:p-8 shadow-sm">
+      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-start sm:items-center gap-4">
-            <div className="w-16 h-16 rounded-3xl bg-charcoal-50 border border-charcoal-100 flex items-center justify-center text-3xl shadow-sm flex-shrink-0">
+            <div className="w-16 h-16 rounded-3xl bg-charcoal-50 dark:bg-slate-800 border border-charcoal-100 dark:border-slate-800 flex items-center justify-center text-3xl shadow-sm flex-shrink-0">
               {circle.emoji || '🍱'}
             </div>
 
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-black text-charcoal-900 tracking-tight">
+                <h1 className="text-2xl sm:text-3xl font-black text-charcoal-900 dark:text-white tracking-tight">
                   {circle.name}
                 </h1>
                 <Badge variant="outline" size="sm">
@@ -225,11 +225,11 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                 </Badge>
               </div>
 
-              <p className="text-xs sm:text-sm text-charcoal-500 font-medium">
+              <p className="text-xs sm:text-sm text-charcoal-500 dark:text-slate-400 font-medium">
                 {circle.college} • {members.length} Members
               </p>
 
-              <p className="text-xs text-charcoal-600 max-w-2xl leading-relaxed pt-1">
+              <p className="text-xs text-charcoal-600 dark:text-slate-400 max-w-2xl leading-relaxed pt-1">
                 {circle.description || 'Active campus group for coordinating meals.'}
               </p>
             </div>
@@ -363,15 +363,15 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
               onOpenFinalizeModal={() => setFinalizeModalOpen(true)}
             />
           ) : (
-            <div className="rounded-3xl bg-white border border-charcoal-100 p-8 text-center space-y-4">
+            <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-8 text-center space-y-4">
               <div className="w-14 h-14 rounded-2xl bg-orange-50 text-swiggy-orange flex items-center justify-center mx-auto text-2xl">
                 🍕
               </div>
               <div>
-                <h3 className="font-extrabold text-lg text-charcoal-900">
+                <h3 className="font-extrabold text-lg text-charcoal-900 dark:text-white">
                   No Active Ordering Session
                 </h3>
-                <p className="text-xs text-charcoal-500 max-w-sm mx-auto mt-1">
+                <p className="text-xs text-charcoal-500 dark:text-slate-400 max-w-sm mx-auto mt-1">
                   Ready for lunch, dinner, or midnight bites? Launch a group session with your circle.
                 </p>
               </div>
@@ -436,14 +436,14 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
           )}
 
           {/* 3. The Shared Group Cart */}
-          <div className="rounded-3xl bg-white border border-charcoal-100 p-6 shadow-sm space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-charcoal-100">
+          <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-6 shadow-sm space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-charcoal-100 dark:border-slate-800">
               <div>
-                <h2 className="text-xl font-extrabold text-charcoal-900 tracking-tight flex items-center gap-2">
+                <h2 className="text-xl font-extrabold text-charcoal-900 dark:text-white tracking-tight flex items-center gap-2">
                   <ShoppingBag className="w-5 h-5 text-swiggy-orange" />
                   Shared Circle Cart
                 </h2>
-                <p className="text-xs text-charcoal-500">
+                <p className="text-xs text-charcoal-500 dark:text-slate-400">
                   Real-time cross-member synchronized food selections
                 </p>
               </div>
@@ -465,7 +465,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                   <span className="text-xs text-charcoal-400 font-semibold">
                     {totalItemsCount} {totalItemsCount === 1 ? 'dish' : 'dishes'}
                   </span>
-                  <p className="text-xl font-black text-charcoal-900">
+                  <p className="text-xl font-black text-charcoal-900 dark:text-white">
                     {formatPaise(subtotalPaise)}
                   </p>
                 </div>
@@ -473,8 +473,8 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
             </div>
 
             {/* Delivery Savings Progress Banner */}
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-emerald-800">
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
                 <TrendingDown className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                 {subtotalPaise > 40000 ? (
                   <span className="font-bold">
@@ -495,7 +495,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
               <div className="py-12 text-center space-y-3">
                 <p className="text-3xl">🛒</p>
                 <h4 className="font-bold text-sm text-charcoal-800">Your group cart is empty</h4>
-                <p className="text-xs text-charcoal-500 max-w-xs mx-auto">
+                <p className="text-xs text-charcoal-500 dark:text-slate-400 max-w-xs mx-auto">
                   Browse the menu and add dishes. Your circle mates will see your selections live.
                 </p>
                 {activeSession && (
@@ -536,11 +536,11 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                       className={`rounded-2xl border p-4 transition ${
                         isCurrentMember
                           ? 'border-orange-200 bg-orange-50/30'
-                          : 'border-charcoal-100 bg-[#FAFAF8]'
+                          : 'border-charcoal-100 dark:border-slate-800 bg-[#FAFAF8] dark:bg-slate-800/60'
                       }`}
                     >
                       {/* Member Header & Smart Budget Guardrails */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-charcoal-100/80 mb-3 gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-charcoal-100 dark:border-slate-800/80 mb-3 gap-2">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full overflow-hidden relative border border-white shadow-xs">
                             <Image
@@ -553,7 +553,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                             />
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-charcoal-900 flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-charcoal-900 dark:text-white flex items-center gap-1.5">
                               {firstItem.user_name}
                               {isCurrentMember && (
                                 <span className="text-[10px] bg-swiggy-light text-swiggy-dark px-1.5 py-0.2 rounded-full font-bold">
@@ -561,7 +561,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                                 </span>
                               )}
                             </p>
-                            <p className="text-[10px] text-charcoal-500">
+                            <p className="text-[10px] text-charcoal-500 dark:text-slate-400">
                               {userItems.reduce((s, i) => s + i.quantity, 0)} items • Budget: {formatPaise(memberBudgetPaise)} • Est. Fee Share: {formatPaise(estPlatformFeeSharePaise)}
                             </p>
                           </div>
@@ -570,23 +570,23 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                         <div className="flex flex-col sm:items-end gap-1">
                           <div className="flex items-center gap-2 self-end sm:self-center">
                             {isOverBudget ? (
-                              <span className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+                              <span className="text-[10px] font-black text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
                                 <span>⛔</span> Over Budget by {formatPaise(Math.abs(remainingBudgetPaise))}
                               </span>
                             ) : isApproachingBudget ? (
-                              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 px-2 py-0.5 rounded-full flex items-center gap-1">
                                 <span>⚠️</span> Approaching Limit ({formatPaise(remainingBudgetPaise)} left)
                               </span>
                             ) : (
-                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-full flex items-center gap-1">
                                 <span>✓</span> Safe ({formatPaise(remainingBudgetPaise)} left)
                               </span>
                             )}
-                            <span className="font-black text-xs text-charcoal-900">
+                            <span className="font-black text-xs text-charcoal-900 dark:text-white">
                               Est. {formatPaise(estTotalPaise)}
                             </span>
                           </div>
-                          <span className="text-[9px] text-charcoal-400 self-end">
+                          <span className="text-[9px] text-charcoal-400 dark:text-slate-500 self-end">
                             (Dishes: {formatPaise(memberSubtotal)} + Fee: {formatPaise(estPlatformFeeSharePaise)})
                           </span>
                         </div>
@@ -618,7 +618,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                             </div>
 
                             <div className="flex items-center gap-3">
-                              <span className="font-semibold text-charcoal-600">
+                              <span className="font-semibold text-charcoal-600 dark:text-slate-400">
                                 {formatPaise(item.item_price_paise * item.quantity)}
                               </span>
 
@@ -627,7 +627,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                                 <div className="flex items-center gap-1.5 bg-white border border-charcoal-200 rounded-lg p-0.5 shadow-xs">
                                   <button
                                     onClick={() => updateCartQuantity(item.id, -1)}
-                                    className="p-1 hover:bg-charcoal-100 rounded text-charcoal-600"
+                                    className="p-1 hover:bg-charcoal-100 rounded text-charcoal-600 dark:text-slate-400"
                                     aria-label="Decrease quantity"
                                   >
                                     <Minus className="w-3 h-3" />
@@ -637,14 +637,14 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                                   </span>
                                   <button
                                     onClick={() => updateCartQuantity(item.id, 1)}
-                                    className="p-1 hover:bg-charcoal-100 rounded text-charcoal-600"
+                                    className="p-1 hover:bg-charcoal-100 rounded text-charcoal-600 dark:text-slate-400"
                                     aria-label="Increase quantity"
                                   >
                                     <Plus className="w-3 h-3" />
                                   </button>
                                 </div>
                               ) : (
-                                <span className="text-[11px] font-bold text-charcoal-500 bg-white px-2 py-0.5 rounded border border-charcoal-200">
+                                <span className="text-[11px] font-bold text-charcoal-500 dark:text-slate-400 bg-white px-2 py-0.5 rounded border border-charcoal-200">
                                   ×{item.quantity}
                                 </span>
                               )}
@@ -660,15 +660,15 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
 
             {/* Split Breakdown Summary Table */}
             {cartItems.length > 0 && (
-              <div className="mt-6 pt-5 border-t border-charcoal-100 space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-charcoal-500">
+              <div className="mt-6 pt-5 border-t border-charcoal-100 dark:border-slate-800 space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-charcoal-500 dark:text-slate-400">
                   Itemized Individual Split (Integer Paise Calculation)
                 </h4>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="border-b border-charcoal-100 text-charcoal-400 font-semibold">
+                      <tr className="border-b border-charcoal-100 dark:border-slate-800 text-charcoal-400 font-semibold">
                         <th className="pb-2">Member</th>
                         <th className="pb-2 text-center">Items</th>
                         <th className="pb-2 text-right">Subtotal</th>
@@ -700,7 +700,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                 </div>
 
                 {/* Bill Breakdown Totals */}
-                <div className="pt-3 border-t border-charcoal-100 space-y-1.5 text-xs text-charcoal-600">
+                <div className="pt-3 border-t border-charcoal-100 dark:border-slate-800 space-y-1.5 text-xs text-charcoal-600 dark:text-slate-400">
                   <div className="flex justify-between">
                     <span>Group Food Subtotal</span>
                     <span className="font-mono">{formatPaise(subtotalPaise)}</span>
@@ -725,7 +725,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                       <span className="font-mono">-{formatPaise(discountPaise)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between pt-2 border-t border-charcoal-200 text-sm font-black text-charcoal-900">
+                  <div className="flex justify-between pt-2 border-t border-charcoal-200 text-sm font-black text-charcoal-900 dark:text-white">
                     <span>Total Group Amount</span>
                     <span className="font-mono">{formatPaise(grandTotalPaise)}</span>
                   </div>
@@ -738,9 +738,9 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
         {/* Right Column (4 cols): Members Panel & Quick Circle Info */}
         <div className="lg:col-span-4 space-y-6">
           {/* Members Panel */}
-          <div className="rounded-3xl bg-white border border-charcoal-100 p-6 shadow-sm space-y-4">
+          <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-base text-charcoal-900 flex items-center gap-2">
+              <h3 className="font-extrabold text-base text-charcoal-900 dark:text-white flex items-center gap-2">
                 <Users className="w-4 h-4 text-swiggy-orange" />
                 Circle Members ({members.length})
               </h3>
@@ -760,7 +760,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                 return (
                   <div
                     key={m.id}
-                    className="flex items-center justify-between p-2.5 rounded-2xl bg-[#FAFAF8] border border-charcoal-100"
+                    className="flex items-center justify-between p-2.5 rounded-2xl bg-[#FAFAF8] dark:bg-slate-800/60 border border-charcoal-100 dark:border-slate-800"
                   >
                     <div className="flex items-center gap-2.5">
                       <div className="w-9 h-9 rounded-full overflow-hidden relative border border-white shadow-xs">
@@ -774,13 +774,13 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                         />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-charcoal-900 flex items-center gap-1.5">
+                        <p className="text-xs font-bold text-charcoal-900 dark:text-white flex items-center gap-1.5">
                           {m.profile.full_name}
                           {isYou && (
                             <span className="text-[10px] text-swiggy-orange font-bold">(You)</span>
                           )}
                         </p>
-                        <p className="text-[10px] text-charcoal-500">
+                        <p className="text-[10px] text-charcoal-500 dark:text-slate-400">
                           {m.profile.academic_year}
                         </p>
                       </div>
@@ -805,15 +805,15 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
           </div>
 
           {/* Quick Invite Box */}
-          <div className="rounded-3xl bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 p-6 space-y-3">
+          <div className="rounded-3xl bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/40 dark:to-amber-950/40 border border-orange-200 dark:border-orange-900/50 p-6 space-y-3">
             <div className="flex items-center gap-2 text-xs font-bold text-swiggy-dark">
               <Share2 className="w-4 h-4 text-swiggy-orange" />
               <span>Share Invite Code</span>
             </div>
-            <p className="text-xs text-charcoal-600">
+            <p className="text-xs text-charcoal-600 dark:text-slate-400">
               Mates can join directly with this code on the dashboard or by opening your invite link.
             </p>
-            <div className="flex items-center justify-between bg-white rounded-2xl p-2.5 border border-orange-200">
+            <div className="flex items-center justify-between bg-white dark:bg-slate-900 rounded-2xl p-2.5 border border-orange-200 dark:border-slate-700">
               <span className="font-mono text-base font-black tracking-widest text-swiggy-orange ml-2">
                 {circle.invite_code}
               </span>
@@ -874,8 +874,8 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
         description="Share this link or code with your campus friends so they can add food to the circle cart."
       >
         <div className="space-y-4 pt-2">
-          <div className="rounded-2xl bg-charcoal-50 p-4 border border-charcoal-200 text-center space-y-1">
-            <p className="text-xs font-semibold text-charcoal-500 uppercase tracking-wider">
+          <div className="rounded-2xl bg-charcoal-50 dark:bg-slate-800 p-4 border border-charcoal-200 text-center space-y-1">
+            <p className="text-xs font-semibold text-charcoal-500 dark:text-slate-400 uppercase tracking-wider">
               6-Letter Invite Code
             </p>
             <p className="text-3xl font-black font-mono tracking-widest text-swiggy-orange">
@@ -884,7 +884,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-charcoal-700">
+            <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300">
               Direct Invitation Link
             </label>
             <div className="flex items-center gap-2">
@@ -892,7 +892,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                 type="text"
                 readOnly
                 value={inviteLink}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-charcoal-200 bg-charcoal-50 font-mono text-charcoal-700"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-charcoal-200 bg-charcoal-50 dark:bg-slate-800 font-mono text-charcoal-700 dark:text-slate-300"
               />
               <Button
                 size="sm"
@@ -927,7 +927,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700">
+            <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 dark:text-slate-300">
               Campus Delivery Location
             </label>
             <input
@@ -940,14 +940,14 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700">
+            <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 dark:text-slate-300">
               Delivery Notes for Driver
             </label>
             <input
               type="text"
               value={deliveryNotes}
               onChange={(e) => setDeliveryNotes(e.target.value)}
-              placeholder="e.g. Call Aarav upon arrival at Gate 2 security"
+              placeholder="e.g. Call me upon arrival at the campus delivery point"
               className="w-full px-3.5 py-2.5 rounded-xl border border-charcoal-200 text-xs focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
             />
           </div>

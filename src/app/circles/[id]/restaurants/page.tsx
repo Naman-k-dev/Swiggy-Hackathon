@@ -99,13 +99,13 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
         <div>
           <Link
             href={`/circles/${circleId}`}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-charcoal-500 hover:text-charcoal-900 mb-2 transition"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-charcoal-500 dark:text-slate-400 hover:text-charcoal-900 dark:text-white mb-2 transition"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Back to {circle.name}
           </Link>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-charcoal-900 tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-charcoal-900 dark:text-white tracking-tight">
               Select Restaurant for Circle Session
             </h1>
             <Badge variant="orange" size="sm" className="gap-1 font-bold">
@@ -113,7 +113,7 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
               Swiggy Food MCP / Campus Catalog
             </Badge>
           </div>
-          <p className="text-xs text-charcoal-500 mt-1">
+          <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-1">
             Pick a spot suited for {circle.name} • Target Budget: ₹{circle.preferred_budget}/person
           </p>
         </div>
@@ -128,7 +128,7 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
       </div>
 
       {/* Search and Filters Bar */}
-      <div className="rounded-3xl bg-white border border-charcoal-100 p-4 shadow-sm space-y-4">
+      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-4 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row gap-3">
           {/* Search Box */}
           <div className="relative flex-1">
@@ -138,7 +138,7 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by restaurant name, dish, or cuisine (e.g. rolls, biryani, dosa)..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-charcoal-200 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-charcoal-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
             />
           </div>
 
@@ -149,7 +149,7 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
               className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold border transition ${
                 pureVegOnly
                   ? 'bg-veg-light text-veg-dark border-emerald-300 ring-1 ring-emerald-400'
-                  : 'bg-white text-charcoal-700 border-charcoal-200 hover:bg-charcoal-50'
+                  : 'bg-white text-charcoal-700 dark:text-slate-300 border-charcoal-200 dark:border-slate-700 hover:bg-charcoal-50 dark:bg-slate-800'
               }`}
             >
               <span className="veg-icon !w-3.5 !h-3.5" />
@@ -162,7 +162,7 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
                 setBudgetFilter(e.target.value === 'all' ? null : Number(e.target.value))
               }
               aria-label="Filter restaurants by budget"
-              className="px-3 py-2 rounded-2xl text-xs font-bold border border-charcoal-200 bg-white text-charcoal-700 focus:outline-none focus:ring-2 focus:ring-swiggy-orange"
+              className="px-3 py-2 rounded-2xl text-xs font-bold border border-charcoal-200 dark:border-slate-700 bg-white text-charcoal-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-swiggy-orange"
             >
               <option value="all">Any Budget</option>
               <option value="130">Under ₹130 / one</option>
@@ -183,7 +183,7 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
                 className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition ${
                   isSelected
                     ? 'bg-swiggy-orange text-white shadow-sm'
-                    : 'bg-charcoal-100 text-charcoal-700 hover:bg-charcoal-200'
+                    : 'bg-charcoal-100 text-charcoal-700 dark:text-slate-300 hover:bg-charcoal-200'
                 }`}
               >
                 {cuisine}
@@ -195,10 +195,10 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
 
       {/* Restaurants Grid */}
       {filteredRestaurants.length === 0 ? (
-        <div className="rounded-3xl bg-white border border-charcoal-100 p-12 text-center space-y-3">
+        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-12 text-center space-y-3">
           <p className="text-2xl">🔍</p>
-          <h3 className="font-extrabold text-charcoal-900">No restaurants match your filters</h3>
-          <p className="text-xs text-charcoal-500">
+          <h3 className="font-extrabold text-charcoal-900 dark:text-white">No restaurants match your filters</h3>
+          <p className="text-xs text-charcoal-500 dark:text-slate-400">
             Try resetting your search query or selecting &quot;Any Budget&quot;.
           </p>
           <Button
@@ -222,7 +222,7 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
             return (
               <div
                 key={restaurant.id}
-                className="rounded-3xl bg-white border border-charcoal-100 overflow-hidden shadow-sm hover:shadow-card hover:border-charcoal-200 transition-all flex flex-col justify-between group"
+                className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-card hover:border-charcoal-200 dark:border-slate-700 transition-all flex flex-col justify-between group"
               >
                 <div>
                   {/* Photo with Overlay Badges */}
@@ -251,7 +251,7 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
                     )}
 
                     {/* Delivery Time */}
-                    <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm text-charcoal-800 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                    <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm text-charcoal-800 dark:text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
                       <Clock className="w-3 h-3 text-swiggy-orange" />
                       <span>{restaurant.delivery_time_min} mins</span>
                     </div>
@@ -266,7 +266,7 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
                   {/* Body Content */}
                   <div className="p-5 space-y-2">
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-extrabold text-base text-charcoal-900 leading-snug group-hover:text-swiggy-orange transition-colors">
+                      <h3 className="font-extrabold text-base text-charcoal-900 dark:text-white leading-snug group-hover:text-swiggy-orange transition-colors">
                         {restaurant.name}
                       </h3>
                       <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-lg text-xs font-bold flex-shrink-0">
@@ -275,15 +275,15 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
                       </div>
                     </div>
 
-                    <p className="text-xs text-charcoal-500 line-clamp-1">
+                    <p className="text-xs text-charcoal-500 dark:text-slate-400 line-clamp-1">
                       {restaurant.cuisine.join(' • ')}
                     </p>
 
-                    <p className="text-xs text-charcoal-600 line-clamp-2">
+                    <p className="text-xs text-charcoal-600 dark:text-slate-400 line-clamp-2">
                       {restaurant.tagline}
                     </p>
 
-                    <div className="pt-2 flex items-center justify-between text-xs font-semibold text-charcoal-700">
+                    <div className="pt-2 flex items-center justify-between text-xs font-semibold text-charcoal-700 dark:text-slate-300">
                       <span>Approx. {formatRupees(restaurant.price_for_one)} for one</span>
                       <span className="text-[11px] text-charcoal-400">
                         {restaurant.rating_count}

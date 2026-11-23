@@ -55,7 +55,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
     return (
       <div className="max-w-md mx-auto py-20 text-center space-y-4">
         <h2 className="text-xl font-bold">Order Not Found</h2>
-        <p className="text-xs text-charcoal-500">
+        <p className="text-xs text-charcoal-500 dark:text-slate-400">
           The order #{orderId} could not be located in this session.
         </p>
         <Link href="/dashboard">
@@ -71,7 +71,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
       <div>
         <Link
           href={`/circles/${circleId}`}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-charcoal-500 hover:text-charcoal-900 mb-2 transition"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-charcoal-500 dark:text-slate-400 hover:text-charcoal-900 dark:text-white mb-2 transition"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to {order.circle_name}
@@ -79,8 +79,8 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
       </div>
 
       {/* 1. Confirmation Hero Card */}
-      <div className="rounded-3xl bg-white border border-charcoal-100 p-6 sm:p-8 shadow-sm space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-charcoal-100">
+      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-charcoal-100 dark:border-slate-800">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
               <CheckCircle2 className="w-8 h-8" />
@@ -91,12 +91,12 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
                   {order.order_code}
                 </span>
                 <span className="text-xs text-charcoal-400">•</span>
-                <span className="text-xs font-bold text-charcoal-600">{order.circle_name}</span>
+                <span className="text-xs font-bold text-charcoal-600 dark:text-slate-400">{order.circle_name}</span>
               </div>
-              <h1 className="text-2xl font-black text-charcoal-900 tracking-tight mt-0.5">
+              <h1 className="text-2xl font-black text-charcoal-900 dark:text-white tracking-tight mt-0.5">
                 Simulated Order Confirmed!
               </h1>
-              <p className="text-xs text-charcoal-500">
+              <p className="text-xs text-charcoal-500 dark:text-slate-400">
                 Placed by {order.placed_by_name} • {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
@@ -112,7 +112,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
         {/* 2. Interactive Live Order Tracking Timeline */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-extrabold text-sm text-charcoal-900 uppercase tracking-wider">
+            <h3 className="font-extrabold text-sm text-charcoal-900 dark:text-white uppercase tracking-wider">
               Live Delivery Status Timeline
             </h3>
 
@@ -143,7 +143,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
                       ? 'border-swiggy-orange bg-swiggy-light/60 shadow-sm ring-1 ring-orange-300'
                       : isPast
                       ? 'border-emerald-200 bg-emerald-50/50 text-emerald-950'
-                      : 'border-charcoal-100 bg-charcoal-50/60 opacity-60'
+                      : 'border-charcoal-100 dark:border-slate-800 bg-charcoal-50 dark:bg-slate-800/60 opacity-60'
                   }`}
                 >
                   <div
@@ -152,7 +152,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
                         ? 'bg-swiggy-orange text-white animate-pulse'
                         : isPast
                         ? 'bg-emerald-600 text-white'
-                        : 'bg-charcoal-200 text-charcoal-500'
+                        : 'bg-charcoal-200 text-charcoal-500 dark:text-slate-400'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -160,7 +160,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
 
                   <div>
                     <p className="text-xs font-bold leading-tight">{step.label}</p>
-                    <p className="text-[10px] text-charcoal-500 mt-0.5 leading-tight">{step.desc}</p>
+                    <p className="text-[10px] text-charcoal-500 dark:text-slate-400 mt-0.5 leading-tight">{step.desc}</p>
                   </div>
 
                   {isCurrent && (
@@ -178,22 +178,22 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
         </div>
 
         {/* 3. Delivery Drop Point & Instructions */}
-        <div className="p-4 rounded-2xl bg-charcoal-50 border border-charcoal-100 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+        <div className="p-4 rounded-2xl bg-charcoal-50 dark:bg-slate-800 border border-charcoal-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div>
-            <p className="font-bold text-charcoal-500 uppercase tracking-wider text-[10px]">
+            <p className="font-bold text-charcoal-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">
               Designated Campus Drop Point
             </p>
-            <p className="font-bold text-charcoal-900 mt-0.5 flex items-center gap-1.5">
+            <p className="font-bold text-charcoal-900 dark:text-white mt-0.5 flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-swiggy-orange" />
               {order.delivery_location}
             </p>
           </div>
 
           <div>
-            <p className="font-bold text-charcoal-500 uppercase tracking-wider text-[10px]">
+            <p className="font-bold text-charcoal-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">
               Special Instructions
             </p>
-            <p className="font-medium text-charcoal-800 mt-0.5">
+            <p className="font-medium text-charcoal-800 dark:text-slate-200 mt-0.5">
               {order.delivery_instructions || 'Deliver all items in one bundle.'}
             </p>
           </div>
@@ -203,10 +203,10 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
       {/* 4. Member Contributions & Bill Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left: Per Member Individual Contributions */}
-        <div className="rounded-3xl bg-white border border-charcoal-100 p-6 shadow-sm space-y-4">
-          <h3 className="font-extrabold text-base text-charcoal-900 flex items-center justify-between">
+        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-6 shadow-sm space-y-4">
+          <h3 className="font-extrabold text-base text-charcoal-900 dark:text-white flex items-center justify-between">
             <span>Member-wise Breakdown</span>
-            <span className="text-xs font-semibold text-charcoal-500">
+            <span className="text-xs font-semibold text-charcoal-500 dark:text-slate-400">
               {order.member_breakdowns.length} Students
             </span>
           </h3>
@@ -220,7 +220,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
                   className={`p-3 rounded-2xl border flex items-center justify-between text-xs ${
                     isYou
                       ? 'border-orange-200 bg-orange-50/40 font-semibold'
-                      : 'border-charcoal-100 bg-[#FAFAF8]'
+                      : 'border-charcoal-100 dark:border-slate-800 bg-[#FAFAF8]'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
@@ -235,20 +235,20 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
                       />
                     </div>
                     <div>
-                      <p className="font-bold text-charcoal-900 flex items-center gap-1">
+                      <p className="font-bold text-charcoal-900 dark:text-white flex items-center gap-1">
                         {member.user_name}
                         {isYou && (
                           <span className="text-[10px] text-swiggy-orange font-bold">(You)</span>
                         )}
                       </p>
-                      <p className="text-[10px] text-charcoal-500">
+                      <p className="text-[10px] text-charcoal-500 dark:text-slate-400">
                         {member.items_count} {member.items_count === 1 ? 'dish' : 'dishes'}
                       </p>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <span className="font-black text-sm text-charcoal-900">
+                    <span className="font-black text-sm text-charcoal-900 dark:text-white">
                       {formatPaise(member.share_paise)}
                     </span>
                     <p className="text-[10px] text-emerald-600 font-bold">
@@ -262,12 +262,12 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
         </div>
 
         {/* Right: Full Financial Summary */}
-        <div className="rounded-3xl bg-white border border-charcoal-100 p-6 shadow-sm space-y-4">
-          <h3 className="font-extrabold text-base text-charcoal-900">
+        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-6 shadow-sm space-y-4">
+          <h3 className="font-extrabold text-base text-charcoal-900 dark:text-white">
             Order Total & Savings
           </h3>
 
-          <div className="space-y-2 text-xs text-charcoal-600">
+          <div className="space-y-2 text-xs text-charcoal-600 dark:text-slate-400">
             <div className="flex justify-between">
               <span>Restaurant Subtotal ({order.total_items_count} items)</span>
               <span className="font-mono">{formatPaise(order.subtotal_paise)}</span>
@@ -292,13 +292,13 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
                 <span className="font-mono">-{formatPaise(order.discount_paise)}</span>
               </div>
             )}
-            <div className="flex justify-between pt-3 border-t border-charcoal-200 text-base font-black text-charcoal-900">
+            <div className="flex justify-between pt-3 border-t border-charcoal-200 dark:border-slate-700 text-base font-black text-charcoal-900 dark:text-white">
               <span>Grand Total</span>
               <span className="font-mono text-swiggy-orange">{formatPaise(order.total_paise)}</span>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-charcoal-100 flex flex-col gap-2">
+          <div className="pt-4 border-t border-charcoal-100 dark:border-slate-800 flex flex-col gap-2">
             <Link href="/dashboard">
               <Button size="md" className="w-full rounded-2xl text-xs font-bold shadow-md">
                 Return to Student Dashboard

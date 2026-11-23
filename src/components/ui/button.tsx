@@ -30,7 +30,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       secondary:
         "bg-charcoal-900 text-white hover:bg-charcoal-800 shadow-sm",
       outline:
-        "border border-charcoal-200 bg-white text-charcoal-800 hover:bg-charcoal-50 hover:border-charcoal-300",
+        "border border-charcoal-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 text-charcoal-800 dark:text-slate-200 hover:bg-charcoal-50 dark:hover:bg-slate-800 hover:border-charcoal-300 dark:hover:border-slate-600",
       ghost:
         "text-charcoal-700 hover:bg-charcoal-100/70 hover:text-charcoal-900",
       danger:

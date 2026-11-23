@@ -2,23 +2,25 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/lib/store/demo-context';
-import { Users, Sparkles, RefreshCw, Radio, Check, BarChart3 } from 'lucide-react';
+import { Users, Sparkles, RefreshCw, Radio, BarChart3, Sun, Moon, UserPlus } from 'lucide-react';
 import Image from 'next/image';
 import { JudgeGuideModal } from '@/components/shared/JudgeGuideModal';
 import { AnalyticsModal } from '@/components/shared/AnalyticsModal';
+import { AddProfileModal } from '@/components/shared/AddProfileModal';
 
 export function PersonaSwitcherBar() {
   const {
     currentUser,
-    personas,
-    switchPersona,
     isRealtimeConnected,
     isSupabaseActive,
     resetDemoData,
+    theme,
+    toggleTheme,
   } = useApp();
 
   const [guideOpen, setGuideOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [addProfileOpen, setAddProfileOpen] = useState(false);
   const [mcpStatus, setMcpStatus] = useState<{ isConnected: boolean; isLive: boolean } | null>(null);
 
   useEffect(() => {
@@ -26,6 +28,20 @@ export function PersonaSwitcherBar() {
       .then((r) => r.json())
       .then((d) => setMcpStatus(d))
       .catch(() => setMcpStatus({ isConnected: false, isLive: false }));
+  }, []);
+
+  // Auto prompt custom profile creation if user hasn't created one
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const hasCustomProfile = localStorage.getItem('scc_has_custom_profile_v1');
+      if (!hasCustomProfile) {
+        const timer = setTimeout(() => {
+          setAddProfileOpen(true);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    } catch {}
   }, []);
 
   const handleToggleMCP = async () => {
@@ -41,18 +57,18 @@ export function PersonaSwitcherBar() {
   };
 
   const handleReset = () => {
-    if (confirm('Reset prototype to initial seeded state (Aarav, Ananya, Rohan, Priya & sample orders)?')) {
+    if (confirm('Reset prototype to initial state?')) {
       resetDemoData();
     }
   };
 
   return (
     <>
-      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-orange-200/80 shadow-sm">
+      <div className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-orange-200/80 dark:border-slate-800 shadow-sm transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            {/* Left: Judge Guide & Active Persona */}
-            <div className="flex items-center gap-2.5">
+            {/* Left: Judge Guide & Active Profile */}
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setGuideOpen(true)}
                 className="inline-flex items-center gap-1.5 bg-gradient-to-r from-swiggy-orange to-amber-500 hover:from-swiggy-hover hover:to-amber-600 text-white font-extrabold px-3 py-1 rounded-full text-[10px] tracking-wider uppercase shadow-md shadow-orange-500/20 transition-all duration-200 transform hover:scale-105"
@@ -61,61 +77,45 @@ export function PersonaSwitcherBar() {
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Judge Guide</span>
               </button>
-              <span className="text-charcoal-300 hidden sm:inline">|</span>
-              <div className="flex items-center gap-1.5 text-charcoal-800">
+
+              <div className="flex items-center gap-2 bg-orange-50/80 dark:bg-slate-800 px-3 py-1 rounded-full border border-orange-200/60 dark:border-slate-700">
                 <Users className="w-3.5 h-3.5 text-swiggy-orange" />
-                <span className="hidden md:inline text-charcoal-500 text-xs">Viewing:</span>
-                <span className="font-bold text-xs text-charcoal-900">{currentUser.full_name}</span>
-                {currentUser.id.endsWith('1') && (
-                  <span className="text-[10px] font-bold text-swiggy-dark bg-orange-100 px-2 py-0.5 rounded-full border border-orange-200">
-                    Admin
-                  </span>
-                )}
+                <div className="w-5 h-5 rounded-full overflow-hidden relative border border-orange-300 dark:border-slate-600 flex-shrink-0">
+                  <Image
+                    src={currentUser.avatar_url || ''}
+                    alt={currentUser.full_name}
+                    width={20}
+                    height={20}
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+                <span className="font-bold text-xs text-charcoal-900 dark:text-white">{currentUser.full_name}</span>
+                <span className="text-[10px] text-charcoal-500 dark:text-slate-400 hidden sm:inline">({currentUser.college})</span>
               </div>
             </div>
 
-            {/* Center: Student Switcher Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
-              <span className="text-charcoal-500 text-[11px] mr-1 hidden lg:inline font-medium">Switch:</span>
-              {personas.map((persona) => {
-                const isActive = persona.id === currentUser.id;
-                return (
-                  <button
-                    key={persona.id}
-                    onClick={() => switchPersona(persona.id)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
-                      isActive
-                        ? 'bg-gradient-to-r from-swiggy-orange to-amber-500 text-white shadow-md shadow-orange-500/30 ring-1 ring-orange-200 font-bold scale-105'
-                        : 'bg-charcoal-50 text-charcoal-700 hover:bg-orange-100 hover:text-charcoal-900 border border-charcoal-200/60'
-                    }`}
-                    title={`Switch active view to ${persona.full_name}`}
-                  >
-                    <div className="w-4 h-4 rounded-full overflow-hidden relative border border-orange-300 flex-shrink-0 shadow-sm">
-                      <Image
-                        src={persona.avatar_url || ''}
-                        alt={persona.full_name}
-                        width={16}
-                        height={16}
-                        className="object-cover"
-                        unoptimized
-                      />
-                    </div>
-                    <span>{persona.full_name.split(' ')[0]}</span>
-                    {isActive && <Check className="w-3 h-3 ml-0.5 text-white" />}
-                  </button>
-                );
-              })}
+            {/* Center: Add Profile Button */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setAddProfileOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-md shadow-orange-500/20 transition-all duration-200 hover:scale-105"
+                title="Add your custom profile"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>+ Add Profile</span>
+              </button>
             </div>
 
-            {/* Right: MCP Status Pill, AI Metrics & Reset */}
-            <div className="flex items-center gap-2.5">
+            {/* Right: MCP Status Pill, Theme Toggle, AI Metrics, Sync Status & Reset */}
+            <div className="flex items-center gap-2">
               {/* Data Source & MCP Status Pill */}
               <button
                 onClick={handleToggleMCP}
                 className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-full border transition-all duration-200 hover:scale-105 ${
                   mcpStatus?.isLive
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                    : 'bg-orange-50 text-orange-800 border-orange-200'
+                    : 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-slate-800 dark:text-orange-400 dark:border-slate-700'
                 }`}
                 title={
                   mcpStatus?.isLive
@@ -132,15 +132,23 @@ export function PersonaSwitcherBar() {
               </button>
 
               <button
+                onClick={toggleTheme}
+                className="p-1.5 rounded-full bg-charcoal-50 dark:bg-slate-800 hover:bg-orange-100 dark:hover:bg-slate-700 text-charcoal-700 dark:text-slate-200 border border-charcoal-200/60 dark:border-slate-700 transition-all duration-200 hover:scale-105"
+                title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} mode`}
+              >
+                {theme === 'light' ? <Moon className="w-3.5 h-3.5 text-slate-700" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
+              </button>
+
+              <button
                 onClick={() => setAnalyticsOpen(true)}
-                className="flex items-center gap-1.5 bg-charcoal-50 hover:bg-orange-100 text-charcoal-700 hover:text-charcoal-900 px-2.5 py-1 text-[10px] font-medium rounded-full border border-charcoal-200/60 transition-all duration-200 hover:scale-105"
+                className="flex items-center gap-1.5 bg-charcoal-50 dark:bg-slate-800 hover:bg-orange-100 dark:hover:bg-slate-700 text-charcoal-700 dark:text-slate-200 px-2.5 py-1 text-[10px] font-medium rounded-full border border-charcoal-200/60 dark:border-slate-700 transition-all duration-200 hover:scale-105"
                 title="View live business telemetry and conversion metrics"
               >
                 <BarChart3 className="w-3.5 h-3.5 text-swiggy-orange" />
                 <span className="hidden sm:inline">AI Metrics</span>
               </button>
 
-              <div className="hidden sm:flex items-center gap-1.5 text-charcoal-700 bg-charcoal-50 px-2.5 py-1 rounded-full border border-charcoal-200/60">
+              <div className="hidden sm:flex items-center gap-1.5 text-charcoal-700 dark:text-slate-300 bg-charcoal-50 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-charcoal-200/60 dark:border-slate-700">
                 <Radio
                   className={`w-2.5 h-2.5 ${
                     isRealtimeConnected ? 'text-emerald-500 animate-pulse' : 'text-amber-500'
@@ -153,8 +161,8 @@ export function PersonaSwitcherBar() {
 
               <button
                 onClick={handleReset}
-                className="flex items-center gap-1 text-charcoal-700 hover:text-charcoal-900 bg-charcoal-50 hover:bg-orange-100 px-2.5 py-1 text-[10px] font-medium rounded-full border border-charcoal-200/60 transition-all duration-200 hover:scale-105"
-                title="Reset test orders, members and cart back to default"
+                className="flex items-center gap-1 text-charcoal-700 dark:text-slate-300 hover:text-charcoal-900 dark:hover:text-white bg-charcoal-50 dark:bg-slate-800 hover:bg-orange-100 dark:hover:bg-slate-700 px-2.5 py-1 text-[10px] font-medium rounded-full border border-charcoal-200/60 dark:border-slate-700 transition-all duration-200 hover:scale-105"
+                title="Reset test data back to default"
               >
                 <RefreshCw className="w-3 h-3 text-swiggy-orange" />
                 <span className="hidden sm:inline">Reset</span>
@@ -166,6 +174,7 @@ export function PersonaSwitcherBar() {
 
       <JudgeGuideModal isOpen={guideOpen} onClose={() => setGuideOpen(false)} />
       <AnalyticsModal isOpen={analyticsOpen} onClose={() => setAnalyticsOpen(false)} />
+      <AddProfileModal isOpen={addProfileOpen} onClose={() => setAddProfileOpen(false)} />
     </>
   );
 }

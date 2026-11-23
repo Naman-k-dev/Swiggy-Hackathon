@@ -83,7 +83,7 @@ export default function OnboardingPage() {
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Aarav Sharma"
+                placeholder="e.g. Rahul Verma"
                 className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
                 required
               />
