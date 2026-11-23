@@ -35,7 +35,7 @@ export function Navbar() {
   ];
 
   return (
-    <header className="sticky top-[60px] z-20 bg-white/90 backdrop-blur-lg border-b border-charcoal-100 transition-all">
+    <header className="sticky top-[49px] z-30 bg-white/90 backdrop-blur-lg border-b border-charcoal-100 transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo & Prototype Tag */}
