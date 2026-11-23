@@ -9,8 +9,52 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        background: "#FAFAF8",
+        foreground: "#171717",
+        swiggy: {
+          orange: "#FC8019",
+          hover: "#E57315",
+          light: "#FFF5EE",
+          soft: "#FFEAD9",
+          dark: "#C45D0B",
+        },
+        charcoal: {
+          DEFAULT: "#171717",
+          50: "#FAFAFA",
+          100: "#F5F5F5",
+          200: "#E5E5E5",
+          300: "#D4D4D4",
+          400: "#A3A3A3",
+          500: "#737373",
+          600: "#525252",
+          700: "#404040",
+          800: "#262626",
+          900: "#171717",
+        },
+        veg: {
+          DEFAULT: "#00A343",
+          light: "#E8F8EE",
+          dark: "#057A33",
+        },
+        nonveg: {
+          DEFAULT: "#DC2626",
+          light: "#FEF2F2",
+          dark: "#991B1B",
+        },
+      },
+      fontFamily: {
+        sans: ["var(--font-geist-sans)", "system-ui", "-apple-system", "sans-serif"],
+      },
+      boxShadow: {
+        card: "0 2px 12px -2px rgba(0, 0, 0, 0.04), 0 1px 3px 0 rgba(0, 0, 0, 0.02)",
+        "card-hover": "0 10px 25px -4px rgba(0, 0, 0, 0.08), 0 4px 8px -2px rgba(0, 0, 0, 0.03)",
+        bento: "0 4px 20px -2px rgba(0, 0, 0, 0.05)",
+        highlight: "0 0 0 1px rgba(252, 128, 25, 0.15), 0 8px 24px -4px rgba(252, 128, 25, 0.12)",
+      },
+      borderRadius: {
+        "2xl": "1rem",
+        "3xl": "1.5rem",
+        "4xl": "2rem",
       },
     },
   },

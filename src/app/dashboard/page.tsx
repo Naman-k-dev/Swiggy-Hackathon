@@ -1,0 +1,449 @@
+'use client';
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useApp } from '@/lib/store/demo-context';
+import {
+  Users,
+  Plus,
+  KeyRound,
+  ShoppingBag,
+  Clock,
+  Sparkles,
+  ArrowRight,
+  TrendingDown,
+  Calendar,
+  AlertCircle,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Modal } from '@/components/ui/modal';
+import { formatPaise } from '@/lib/utils';
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const {
+    currentUser,
+    getUserCircles,
+    getCircleMembers,
+    getSession,
+    getOrdersForUser,
+    getCircleByInviteCode,
+    joinCircle,
+  } = useApp();
+
+  const userCircles = getUserCircles();
+  const userOrders = getOrdersForUser();
+
+  const [joinModalOpen, setJoinModalOpen] = useState(false);
+  const [inviteCodeInput, setInviteCodeInput] = useState('');
+  const [joinError, setJoinError] = useState<string | null>(null);
+
+  // Today's formatted date
+  const todayFormatted = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  // Check if any circle has an active ordering session
+  const activeSessionCircle = userCircles.find((c) => {
+    const session = getSession(c.id);
+    return session && (session.status === 'open' || session.status === 'locked');
+  });
+  const activeSession = activeSessionCircle ? getSession(activeSessionCircle.id) : null;
+
+  const handleJoinByCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    setJoinError(null);
+    const code = inviteCodeInput.trim().toUpperCase();
+    if (!code) return;
+
+    const circle = getCircleByInviteCode(code);
+    if (!circle) {
+      setJoinError('Invalid invite code. Try "CAMPUS24" or "NIGHT300".');
+      return;
+    }
+
+    const res = joinCircle(circle.id);
+    if (res.success) {
+      setJoinModalOpen(false);
+      setInviteCodeInput('');
+      router.push(`/circles/${circle.id}`);
+    } else {
+      setJoinError(res.message);
+    }
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      {/* 1. Header & Welcome Area */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-charcoal-200/60">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold text-charcoal-500 mb-1">
+            <Calendar className="w-3.5 h-3.5 text-swiggy-orange" />
+            <span>{todayFormatted}</span>
+            <span>•</span>
+            <span className="text-charcoal-700 font-bold">{currentUser.college}</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-charcoal-900 tracking-tight flex items-center gap-2">
+            Welcome back, {currentUser.full_name.split(' ')[0]}! 👋
+          </h1>
+          <p className="text-xs sm:text-sm text-charcoal-500 mt-1">
+            Manage your food circles, coordinate meals, and save delivery costs with classmates.
+          </p>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => setJoinModalOpen(true)}
+            className="rounded-2xl gap-2 text-xs font-bold"
+          >
+            <KeyRound className="w-4 h-4 text-charcoal-600" />
+            Join Circle
+          </Button>
+
+          <Link href="/circles/create">
+            <Button size="md" className="rounded-2xl gap-2 text-xs font-bold shadow-md">
+              <Plus className="w-4 h-4" />
+              Create Circle
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* 2. Active Session Alert (If any) */}
+      {activeSessionCircle && activeSession && (
+        <div className="rounded-3xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white p-5 sm:p-6 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl flex-shrink-0">
+              {activeSessionCircle.emoji || '🍱'}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold bg-white text-orange-600 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  Active Order Session
+                </span>
+                <span className="text-xs text-orange-100">• {activeSessionCircle.name}</span>
+              </div>
+              <h3 className="text-lg font-extrabold mt-1">
+                Ordering from {activeSession.restaurant_name}
+              </h3>
+              <p className="text-xs text-orange-100 flex items-center gap-1.5 mt-0.5">
+                <Clock className="w-3.5 h-3.5" />
+                Status: <strong className="uppercase">{activeSession.status}</strong> • Drop Point: {activeSession.delivery_location}
+              </p>
+            </div>
+          </div>
+
+          <Link href={`/circles/${activeSessionCircle.id}`}>
+            <Button
+              variant="secondary"
+              size="md"
+              className="w-full md:w-auto font-extrabold text-xs px-5 rounded-xl bg-charcoal-900 text-white hover:bg-black gap-2"
+            >
+              <ShoppingBag className="w-4 h-4 text-swiggy-orange" />
+              <span>Enter Group Cart</span>
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {/* 3. Metrics Overview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-2xl bg-white border border-charcoal-100 p-4 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-charcoal-500">My Circles</p>
+            <p className="text-2xl font-black text-charcoal-900 mt-1">{userCircles.length}</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-orange-50 text-swiggy-orange flex items-center justify-center">
+            <Users className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white border border-charcoal-100 p-4 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-charcoal-500">Delivery Fees Saved</p>
+            <p className="text-2xl font-black text-emerald-600 mt-1">₹320</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <TrendingDown className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white border border-charcoal-100 p-4 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-charcoal-500">Target Meal Budget</p>
+            <p className="text-2xl font-black text-charcoal-900 mt-1">₹{currentUser.preferred_budget}</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <Sparkles className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* 4. My Circles Grid */}
+      <div id="circles" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-extrabold text-charcoal-900 tracking-tight">
+              My Campus Circles
+            </h2>
+            <p className="text-xs text-charcoal-500">
+              Your recurring groups for daily meals, hostel orders, and late-night snacks
+            </p>
+          </div>
+        </div>
+
+        {userCircles.length === 0 ? (
+          <div className="rounded-3xl bg-white border border-charcoal-200/80 p-8 text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-orange-50 text-swiggy-orange flex items-center justify-center mx-auto text-xl">
+              🍕
+            </div>
+            <div>
+              <h3 className="font-extrabold text-base text-charcoal-900">
+                You haven&apos;t joined any Circles yet
+              </h3>
+              <p className="text-xs text-charcoal-500 max-w-sm mx-auto mt-1">
+                Create a circle for your hostel roommates or join an existing circle with an invite code.
+              </p>
+            </div>
+            <div className="flex justify-center gap-3">
+              <Button size="sm" onClick={() => setJoinModalOpen(true)} variant="outline">
+                Join with Code
+              </Button>
+              <Link href="/circles/create">
+                <Button size="sm">Create Circle</Button>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {userCircles.map((circle) => {
+              const session = getSession(circle.id);
+              const members = getCircleMembers(circle.id);
+              const isUserAdmin = circle.admin_id === currentUser.id;
+
+              return (
+                <div
+                  key={circle.id}
+                  className="rounded-3xl bg-white border border-charcoal-100 p-6 shadow-sm hover:shadow-card hover:border-charcoal-200 transition-all flex flex-col justify-between group"
+                >
+                  <div>
+                    {/* Card Top: Emoji & Status */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="w-12 h-12 rounded-2xl bg-charcoal-50 border border-charcoal-100 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
+                        {circle.emoji || '🍱'}
+                      </div>
+
+                      {session?.status === 'open' ? (
+                        <Badge variant="success" size="sm" className="font-bold animate-pulse">
+                          Order Open
+                        </Badge>
+                      ) : session?.status === 'locked' ? (
+                        <Badge variant="warning" size="sm" className="font-bold">
+                          Cart Locked
+                        </Badge>
+                      ) : (
+                        <Badge variant="default" size="sm">
+                          Idle
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Circle Name & Details */}
+                    <h3 className="font-extrabold text-lg text-charcoal-900 group-hover:text-swiggy-orange transition-colors">
+                      {circle.name}
+                    </h3>
+                    <p className="text-xs text-charcoal-500 line-clamp-2 mt-1">
+                      {circle.description || 'Active campus group'}
+                    </p>
+
+                    <div className="mt-3 flex items-center gap-2">
+                      <Badge variant="outline" size="sm" className="text-[10px]">
+                        {circle.type}
+                      </Badge>
+                      <Badge variant="orange" size="sm" className="text-[10px]">
+                        Budget: ₹{circle.preferred_budget}/meal
+                      </Badge>
+                      {isUserAdmin && (
+                        <Badge variant="neutral" size="sm" className="text-[10px]">
+                          Admin
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Card Bottom: Member Avatars & Enter Button */}
+                  <div className="mt-6 pt-4 border-t border-charcoal-100 flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="flex -space-x-2 overflow-hidden">
+                        {members.slice(0, 4).map((m, idx) => (
+                          <div
+                            key={idx}
+                            className="inline-block h-7 w-7 rounded-full ring-2 ring-white overflow-hidden relative"
+                          >
+                            <Image
+                              src={m.profile.avatar_url || ''}
+                              alt={m.profile.full_name}
+                              width={28}
+                              height={28}
+                              className="object-cover"
+                              unoptimized
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <span className="text-[11px] font-semibold text-charcoal-500 ml-2">
+                        {members.length} {members.length === 1 ? 'member' : 'members'}
+                      </span>
+                    </div>
+
+                    <Link href={`/circles/${circle.id}`}>
+                      <Button size="sm" className="rounded-xl text-xs font-bold gap-1 shadow-sm">
+                        <span>Enter</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 5. Recent Circle Orders History */}
+      <div className="space-y-4 pt-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-extrabold text-charcoal-900 tracking-tight">
+              Recent Circle Orders
+            </h2>
+            <p className="text-xs text-charcoal-500">
+              Track simulated order status, itemized receipts, and member contributions
+            </p>
+          </div>
+        </div>
+
+        {userOrders.length === 0 ? (
+          <div className="rounded-2xl bg-white border border-charcoal-100 p-6 text-center text-xs text-charcoal-500">
+            No past orders found. Finalize a group order in one of your circles to see it here!
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {userOrders.map((order) => {
+              const myContribution = order.member_breakdowns.find(
+                (m) => m.user_id === currentUser.id
+              );
+
+              return (
+                <div
+                  key={order.id}
+                  className="rounded-2xl bg-white border border-charcoal-100 p-4 sm:p-5 shadow-sm hover:border-charcoal-200 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-swiggy-orange">
+                        {order.order_code}
+                      </span>
+                      <Badge variant="success" size="sm" className="text-[10px] uppercase font-bold">
+                        {order.status}
+                      </Badge>
+                      <span className="text-xs text-charcoal-400">•</span>
+                      <span className="text-xs text-charcoal-600 font-semibold">{order.circle_name}</span>
+                    </div>
+
+                    <h4 className="text-base font-bold text-charcoal-900">
+                      {order.restaurant_name}
+                    </h4>
+
+                    <p className="text-xs text-charcoal-500">
+                      {order.total_items_count} dishes • Delivered to {order.delivery_location}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-t-0 pt-3 sm:pt-0 border-charcoal-100">
+                    <div className="text-right">
+                      <p className="text-xs text-charcoal-500">
+                        {myContribution ? 'Your Share' : 'Group Total'}
+                      </p>
+                      <p className="text-base font-black text-charcoal-900">
+                        {myContribution
+                          ? formatPaise(myContribution.share_paise)
+                          : formatPaise(order.total_paise)}
+                      </p>
+                    </div>
+
+                    <Link href={`/circles/${order.circle_id}/orders/${order.id}`}>
+                      <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold">
+                        View Tracking
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 6. Join Circle Modal */}
+      <Modal
+        isOpen={joinModalOpen}
+        onClose={() => {
+          setJoinModalOpen(false);
+          setJoinError(null);
+        }}
+        title="Join a Campus Circle"
+        description="Enter the 6-letter invite code provided by your circle admin (e.g. CAMPUS24 or NIGHT300)."
+      >
+        <form onSubmit={handleJoinByCode} className="space-y-4 mt-2">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 mb-1.5">
+              Invite Code
+            </label>
+            <input
+              type="text"
+              value={inviteCodeInput}
+              onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
+              placeholder="CAMPUS24"
+              maxLength={8}
+              className="w-full px-4 py-3 text-center font-mono text-lg font-bold tracking-widest rounded-2xl border border-charcoal-200 focus:outline-none focus:ring-2 focus:ring-swiggy-orange uppercase"
+              autoFocus
+              required
+            />
+          </div>
+
+          {joinError && (
+            <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{joinError}</span>
+            </div>
+          )}
+
+          <div className="pt-2 flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              className="flex-1 rounded-xl"
+              onClick={() => setJoinModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" size="md" className="flex-1 rounded-xl font-bold">
+              Join Circle
+            </Button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+}
