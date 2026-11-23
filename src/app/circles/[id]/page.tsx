@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
+import { CircleMatchModal } from '@/components/circlematch/CircleMatchModal';
 import { formatPaise, formatRupees, calculateMemberSplit } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 
@@ -59,6 +60,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
   // Modal States
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
+  const [circleMatchOpen, setCircleMatchOpen] = useState(false);
   const [deliveryLocation, setDeliveryLocation] = useState(
     activeSession?.delivery_location || 'Hostel Block C - Ground Floor Reception'
   );
@@ -201,6 +203,15 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
           {/* Top Actions */}
           <div className="flex flex-wrap items-center gap-3">
             <Button
+              size="md"
+              onClick={() => setCircleMatchOpen(true)}
+              className="rounded-2xl gap-2 text-xs font-black shadow-md bg-gradient-to-r from-swiggy-orange to-amber-500 hover:from-swiggy-hover hover:to-amber-600 text-white transition-all transform hover:scale-[1.02]"
+            >
+              <Sparkles className="w-4 h-4 text-white animate-pulse" />
+              <span>Find Our Perfect Meal ✨</span>
+            </Button>
+
+            <Button
               variant="outline"
               size="md"
               onClick={() => setInviteModalOpen(true)}
@@ -212,9 +223,9 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
 
             {isAdmin && !activeSession && (
               <Link href={`/circles/${circleId}/restaurants`}>
-                <Button size="md" className="rounded-2xl gap-2 text-xs font-bold shadow-md">
+                <Button size="md" variant="outline" className="rounded-2xl gap-2 text-xs font-bold">
                   <Utensils className="w-4 h-4" />
-                  <span>Start Order Session</span>
+                  <span>Browse Restaurants</span>
                 </Button>
               </Link>
             )}
@@ -810,6 +821,13 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
           </div>
         </div>
       </Modal>
+
+      {/* 6. CircleMatch AI Modal */}
+      <CircleMatchModal
+        isOpen={circleMatchOpen}
+        onClose={() => setCircleMatchOpen(false)}
+        circleId={circleId}
+      />
     </div>
   );
 }

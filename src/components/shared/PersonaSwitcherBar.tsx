@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/lib/store/demo-context';
-import { Users, Sparkles, RefreshCw, Radio, Check } from 'lucide-react';
+import { Users, Sparkles, RefreshCw, Radio, Check, BarChart3 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { JudgeGuideModal } from '@/components/shared/JudgeGuideModal';
+import { AnalyticsModal } from '@/components/shared/AnalyticsModal';
 
 export function PersonaSwitcherBar() {
   const {
@@ -18,6 +19,7 @@ export function PersonaSwitcherBar() {
   } = useApp();
 
   const [guideOpen, setGuideOpen] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
   const handleReset = () => {
     if (confirm('Reset prototype to initial seeded state (Aarav, Ananya, Rohan, Priya & sample orders)?')) {
@@ -99,6 +101,15 @@ export function PersonaSwitcherBar() {
             </div>
 
             <button
+              onClick={() => setAnalyticsOpen(true)}
+              className="hidden md:flex items-center gap-1 text-charcoal-400 hover:text-white text-[11px] hover:underline"
+              title="View live business telemetry and conversion metrics"
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-swiggy-orange" />
+              <span>AI Metrics</span>
+            </button>
+
+            <button
               onClick={handleReset}
               className="flex items-center gap-1 text-charcoal-400 hover:text-white text-[11px] hover:underline"
               title="Reset test orders, members and cart back to default"
@@ -111,6 +122,7 @@ export function PersonaSwitcherBar() {
       </div>
 
       <JudgeGuideModal isOpen={guideOpen} onClose={() => setGuideOpen(false)} />
+      <AnalyticsModal isOpen={analyticsOpen} onClose={() => setAnalyticsOpen(false)} />
     </>
   );
 }

@@ -74,6 +74,21 @@ export function JudgeGuideModal({ isOpen, onClose }: JudgeGuideModalProps) {
               </div>
             </div>
 
+            <div className="p-3 rounded-xl bg-orange-50/80 border border-orange-200 flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-swiggy-orange text-white text-xs font-bold flex items-center justify-center flex-shrink-0 animate-pulse">
+                ★
+              </span>
+              <div>
+                <p className="font-bold text-swiggy-dark text-xs flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-swiggy-orange" />
+                  Phase 2 Innovation: Test CircleMatch AI ✨
+                </p>
+                <p className="text-[11px] text-charcoal-700 mt-0.5">
+                  Inside the Circle page, click <strong>&quot;Find Our Perfect Meal ✨&quot;</strong>. CircleMatch AI automatically reads all 4 student cravings, strictly isolates vegetarian constraints for Ananya, and generates 3 balanced group meal plans from a single campus restaurant!
+                </p>
+              </div>
+            </div>
+
             <div className="p-3 rounded-xl bg-charcoal-50 border border-charcoal-200 flex items-start gap-3">
               <span className="w-6 h-6 rounded-full bg-swiggy-orange text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
                 4
