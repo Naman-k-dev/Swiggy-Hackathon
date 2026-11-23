@@ -46,10 +46,11 @@ export default {
         sans: ["var(--font-geist-sans)", "system-ui", "-apple-system", "sans-serif"],
       },
       boxShadow: {
-        card: "0 2px 12px -2px rgba(0, 0, 0, 0.04), 0 1px 3px 0 rgba(0, 0, 0, 0.02)",
-        "card-hover": "0 10px 25px -4px rgba(0, 0, 0, 0.08), 0 4px 8px -2px rgba(0, 0, 0, 0.03)",
-        bento: "0 4px 20px -2px rgba(0, 0, 0, 0.05)",
-        highlight: "0 0 0 1px rgba(252, 128, 25, 0.15), 0 8px 24px -4px rgba(252, 128, 25, 0.12)",
+        card: "0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 1px 3px 0 rgba(0, 0, 0, 0.02)",
+        "card-hover": "0 14px 30px -4px rgba(0, 0, 0, 0.1), 0 6px 12px -2px rgba(0, 0, 0, 0.04)",
+        bento: "0 10px 30px -4px rgba(0, 0, 0, 0.06)",
+        highlight: "0 0 0 1px rgba(252, 128, 25, 0.2), 0 10px 30px -4px rgba(252, 128, 25, 0.15)",
+        glass: "0 8px 32px 0 rgba(31, 38, 135, 0.07)",
       },
       borderRadius: {
         "2xl": "1rem",
