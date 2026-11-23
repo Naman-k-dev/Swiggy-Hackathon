@@ -1,4 +1,4 @@
-import { Circle, CircleMember, OrderingSession, CartItem, StudentProfile, DemoOrder } from '@/types';
+import { Circle, CircleMember, OrderingSession, CartItem, StudentProfile, DemoOrder, RecurringMealWindow } from '@/types';
 
 export const DEFAULT_CAMPUS_NAME =
   process.env.NEXT_PUBLIC_CAMPUS_NAME || 'PW Institute of Innovation Noida';
@@ -129,6 +129,37 @@ export const INITIAL_CIRCLE_MEMBERS: CircleMember[] = [
   },
 ];
 
+export const INITIAL_MEAL_WINDOWS: RecurringMealWindow[] = [
+  {
+    id: 'mw-cse-lunch',
+    circle_id: 'circle-cse-lunch-squad',
+    meal_type: 'Lunch',
+    title: 'CSE Daily Post-Lab Lunch',
+    target_time: '13:15',
+    cutoff_minutes_before: 30,
+    recurrence: 'weekdays',
+    preferred_restaurant_id: 'rest-rolls-bowls',
+    preferred_restaurant_name: 'Rolls & Bowls Co.',
+    pickup_point: 'Academic Block 1 - Main Portico',
+    active: true,
+    created_at: new Date(Date.now() - 7 * 86400000).toISOString(),
+  },
+  {
+    id: 'mw-hostel-dinner',
+    circle_id: 'circle-hostel-block-c',
+    meal_type: 'Dinner',
+    title: 'Hostel Block C Late Night Dinner',
+    target_time: '20:30',
+    cutoff_minutes_before: 45,
+    recurrence: 'daily',
+    preferred_restaurant_id: 'rest-spice-symphony',
+    preferred_restaurant_name: 'Spice Symphony',
+    pickup_point: 'Hostel Block C - Ground Floor Reception',
+    active: true,
+    created_at: new Date(Date.now() - 14 * 86400000).toISOString(),
+  },
+];
+
 export const INITIAL_SESSIONS: OrderingSession[] = [
   {
     id: 'sess-cse-active',
@@ -140,6 +171,36 @@ export const INITIAL_SESSIONS: OrderingSession[] = [
     status: 'open',
     cutoff_time: new Date(Date.now() + 45 * 60000).toISOString(),
     delivery_location: 'Hostel Block C - Ground Floor Reception',
+    pickup_note: 'Academic Block 1 - Main Portico',
+    meal_type: 'Lunch',
+    session_name: 'CSE Daily Post-Lab Lunch',
+    recurrence: 'weekdays',
+    ready_member_ids: [
+      'a0000000-0000-0000-0000-000000000001',
+      'a0000000-0000-0000-0000-000000000002',
+    ],
+    participations: {
+      'a0000000-0000-0000-0000-000000000001': {
+        user_id: 'a0000000-0000-0000-0000-000000000001',
+        status: 'joining',
+        updated_at: new Date(Date.now() - 15 * 60000).toISOString(),
+      },
+      'a0000000-0000-0000-0000-000000000002': {
+        user_id: 'a0000000-0000-0000-0000-000000000002',
+        status: 'joining',
+        updated_at: new Date(Date.now() - 14 * 60000).toISOString(),
+      },
+      'a0000000-0000-0000-0000-000000000003': {
+        user_id: 'a0000000-0000-0000-0000-000000000003',
+        status: 'joining',
+        updated_at: new Date(Date.now() - 12 * 60000).toISOString(),
+      },
+      'a0000000-0000-0000-0000-000000000004': {
+        user_id: 'a0000000-0000-0000-0000-000000000004',
+        status: 'skipped',
+        updated_at: new Date(Date.now() - 10 * 60000).toISOString(),
+      },
+    },
     created_at: new Date(Date.now() - 15 * 60000).toISOString(),
   },
 ];

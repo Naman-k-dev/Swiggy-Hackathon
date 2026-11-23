@@ -85,6 +85,9 @@ export interface CircleMatchSession {
 export type AnalyticsEventType =
   | 'circle_created'
   | 'member_joined'
+  | 'meal_session_scheduled'
+  | 'member_joined_meal'
+  | 'member_skipped_meal'
   | 'circlematch_started'
   | 'preferences_completed'
   | 'recommendations_generated'

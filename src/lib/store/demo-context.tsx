@@ -10,6 +10,10 @@ import {
   DemoOrder,
   Restaurant,
   MemberBreakdown,
+  RecurringMealWindow,
+  MealType,
+  RecurrencePattern,
+  ParticipationStatus,
 } from '@/types';
 import {
   DEMO_PERSONAS,
@@ -18,11 +22,13 @@ import {
   INITIAL_SESSIONS,
   INITIAL_CART_ITEMS,
   INITIAL_DEMO_ORDERS,
+  INITIAL_MEAL_WINDOWS,
   DEFAULT_CAMPUS_NAME,
 } from '@/lib/data/mock-seed';
 import { DEMO_RESTAURANTS } from '@/lib/data/mock-restaurants';
 import { generateInviteCode, calculateMemberSplit } from '@/lib/utils';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { analyticsService } from '@/lib/analytics/analytics-service';
 
 interface AppContextType {
   // Current user & personas
@@ -96,6 +102,27 @@ interface AppContextType {
   getMemberCartTotalPaise: (sessionId: string, userId: string) => number;
   getMemberRemainingBudgetPaise: (sessionId: string, userId: string, circleId: string) => number;
 
+  // Recurring Campus Meal Windows (Part 4)
+  mealWindows: RecurringMealWindow[];
+  getMealWindows: (circleId: string) => RecurringMealWindow[];
+  scheduleMealWindow: (data: {
+    circleId: string;
+    mealType: MealType;
+    title: string;
+    targetTime: string;
+    cutoffMinutesBefore: number;
+    recurrence: RecurrencePattern;
+    restaurantId: string;
+    pickupPoint: string;
+    startSessionImmediately?: boolean;
+  }) => { window: RecurringMealWindow; session?: OrderingSession };
+  updateParticipation: (
+    sessionId: string,
+    userId: string,
+    status: ParticipationStatus,
+    tempBudgetPaise?: number
+  ) => void;
+
   // Reset & Status
   isRealtimeConnected: boolean;
   isSupabaseActive: boolean;
@@ -109,6 +136,7 @@ const STORAGE_KEYS = {
   SESSIONS: 'scc_sessions_v1',
   CART: 'scc_cart_v1',
   ORDERS: 'scc_orders_v1',
+  MEAL_WINDOWS: 'scc_meal_windows_v1',
 };
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -121,6 +149,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sessions, setSessions] = useState<OrderingSession[]>(INITIAL_SESSIONS);
   const [cartItems, setCartItems] = useState<CartItem[]>(INITIAL_CART_ITEMS);
   const [demoOrders, setDemoOrders] = useState<DemoOrder[]>(INITIAL_DEMO_ORDERS);
+  const [mealWindows, setMealWindows] = useState<RecurringMealWindow[]>(INITIAL_MEAL_WINDOWS);
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -133,6 +162,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const storedSessions = localStorage.getItem(STORAGE_KEYS.SESSIONS);
       const storedCart = localStorage.getItem(STORAGE_KEYS.CART);
       const storedOrders = localStorage.getItem(STORAGE_KEYS.ORDERS);
+      const storedMealWindows = localStorage.getItem(STORAGE_KEYS.MEAL_WINDOWS);
 
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
@@ -154,6 +184,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (storedSessions) setSessions(JSON.parse(storedSessions));
       if (storedCart) setCartItems(JSON.parse(storedCart));
       if (storedOrders) setDemoOrders(JSON.parse(storedOrders));
+      if (storedMealWindows) setMealWindows(JSON.parse(storedMealWindows));
     } catch {
       // localStorage read fallback
     }
@@ -168,7 +199,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       m = members,
       s = sessions,
       cart = cartItems,
-      o = demoOrders
+      o = demoOrders,
+      w = mealWindows
     ) => {
       if (typeof window === 'undefined') return;
       try {
@@ -178,11 +210,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(s));
         localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
         localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(o));
+        localStorage.setItem(STORAGE_KEYS.MEAL_WINDOWS, JSON.stringify(w));
       } catch {
         // LocalStorage save error
       }
     },
-    [currentUser, circles, members, sessions, cartItems, demoOrders]
+    [currentUser, circles, members, sessions, cartItems, demoOrders, mealWindows]
   );
 
   // Broadcast Channel for cross-tab realtime sync on same machine
@@ -198,6 +231,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (payload.sessions) setSessions(payload.sessions);
         if (payload.cartItems) setCartItems(payload.cartItems);
         if (payload.demoOrders) setDemoOrders(payload.demoOrders);
+        if (payload.mealWindows) setMealWindows(payload.mealWindows);
       }
     };
 
@@ -214,6 +248,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       sessions?: OrderingSession[];
       cartItems?: CartItem[];
       demoOrders?: DemoOrder[];
+      mealWindows?: RecurringMealWindow[];
     }) => {
       if (typeof window === 'undefined') return;
       try {
@@ -634,6 +669,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         alert('This order session is locked or finalized.');
         return;
       }
+      if (session && session.cutoff_time && new Date(session.cutoff_time).getTime() < Date.now()) {
+        alert('The order cutoff deadline has passed for this session! Ask the organizer to extend the cutoff.');
+        return;
+      }
 
       const effectiveUserId = targetUserId || currentUser.id;
       const targetProfile =
@@ -673,12 +712,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           updated = [...prev, newItem];
         }
 
-        persistState(currentUser, circles, members, sessions, updated);
+        persistState(currentUser, circles, members, sessions, updated, demoOrders, mealWindows);
         broadcastUpdate({ cartItems: updated });
         return updated;
       });
     },
-    [currentUser, sessions, circles, members, persistState, broadcastUpdate]
+    [currentUser, sessions, circles, members, persistState, broadcastUpdate, demoOrders, mealWindows]
   );
 
   const updateCartQuantity = useCallback(
@@ -691,6 +730,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (session && session.status !== 'open') {
           return prev;
         }
+        if (session && session.cutoff_time && new Date(session.cutoff_time).getTime() < Date.now()) {
+          alert('Cannot modify cart: order cutoff deadline has passed.');
+          return prev;
+        }
+
+        const circle = circles.find((c) => c.id === item.circle_id);
+        const isAdmin = circle?.admin_id === currentUser.id;
+        if (item.user_id !== currentUser.id && !isAdmin) {
+          alert('You can only edit your own dishes in the shared cart.');
+          return prev;
+        }
 
         let updated: CartItem[];
         if (item.quantity + delta <= 0) {
@@ -701,24 +751,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           );
         }
 
-        persistState(currentUser, circles, members, sessions, updated);
+        persistState(currentUser, circles, members, sessions, updated, demoOrders, mealWindows);
         broadcastUpdate({ cartItems: updated });
         return updated;
       });
     },
-    [sessions, currentUser, circles, members, persistState, broadcastUpdate]
+    [sessions, currentUser, circles, members, persistState, broadcastUpdate, demoOrders, mealWindows]
   );
 
   const removeFromCart = useCallback(
     (cartItemId: string) => {
       setCartItems((prev) => {
+        const item = prev.find((ci) => ci.id === cartItemId);
+        if (!item) return prev;
+
+        const session = sessions.find((s) => s.id === item.session_id);
+        if (session && session.status !== 'open') {
+          return prev;
+        }
+        if (session && session.cutoff_time && new Date(session.cutoff_time).getTime() < Date.now()) {
+          alert('Cannot remove dish: order cutoff deadline has passed.');
+          return prev;
+        }
+
+        const circle = circles.find((c) => c.id === item.circle_id);
+        const isAdmin = circle?.admin_id === currentUser.id;
+        if (item.user_id !== currentUser.id && !isAdmin) {
+          alert('You can only remove your own dishes from the shared cart.');
+          return prev;
+        }
+
         const updated = prev.filter((ci) => ci.id !== cartItemId);
-        persistState(currentUser, circles, members, sessions, updated);
+        persistState(currentUser, circles, members, sessions, updated, demoOrders, mealWindows);
         broadcastUpdate({ cartItems: updated });
         return updated;
       });
     },
-    [currentUser, circles, members, sessions, persistState, broadcastUpdate]
+    [currentUser, circles, members, sessions, persistState, broadcastUpdate, demoOrders, mealWindows]
   );
 
   // Finalize order (Simulated Checkout)
@@ -820,6 +889,175 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return DEMO_RESTAURANTS.find((r) => r.id === id);
   }, []);
 
+  // Part 4: Recurring Campus Meal Windows
+  const getMealWindows = useCallback(
+    (circleId: string) => {
+      return mealWindows.filter((w) => w.circle_id === circleId && w.active);
+    },
+    [mealWindows]
+  );
+
+  const scheduleMealWindow = useCallback(
+    (data: {
+      circleId: string;
+      mealType: MealType;
+      title: string;
+      targetTime: string;
+      cutoffMinutesBefore: number;
+      recurrence: RecurrencePattern;
+      restaurantId: string;
+      pickupPoint: string;
+      startSessionImmediately?: boolean;
+    }) => {
+      const rest = DEMO_RESTAURANTS.find((r) => r.id === data.restaurantId);
+      const newWindow: RecurringMealWindow = {
+        id: `mw-${Date.now()}`,
+        circle_id: data.circleId,
+        meal_type: data.mealType,
+        title: data.title,
+        target_time: data.targetTime,
+        cutoff_minutes_before: data.cutoffMinutesBefore,
+        recurrence: data.recurrence,
+        preferred_restaurant_id: data.restaurantId,
+        preferred_restaurant_name: rest ? rest.name : 'Campus Partner',
+        pickup_point: data.pickupPoint,
+        active: true,
+        created_at: new Date().toISOString(),
+      };
+
+      const updatedWindows = [...mealWindows, newWindow];
+      setMealWindows(updatedWindows);
+
+      let createdSession: OrderingSession | undefined;
+      if (data.startSessionImmediately) {
+        const cutoffTime = new Date(Date.now() + data.cutoffMinutesBefore * 60000).toISOString();
+        const newSession: OrderingSession = {
+          id: `sess-${Date.now()}`,
+          circle_id: data.circleId,
+          created_by: currentUser.id,
+          restaurant_id: data.restaurantId,
+          restaurant_name: rest ? rest.name : 'Campus Partner',
+          restaurant_image: rest ? rest.image : '',
+          status: 'open',
+          cutoff_time: cutoffTime,
+          delivery_location: data.pickupPoint,
+          pickup_note: data.pickupPoint,
+          meal_type: data.mealType,
+          session_name: data.title,
+          recurrence: data.recurrence,
+          ready_member_ids: [currentUser.id],
+          participations: {
+            [currentUser.id]: {
+              user_id: currentUser.id,
+              status: 'joining',
+              updated_at: new Date().toISOString(),
+            },
+          },
+          created_at: new Date().toISOString(),
+        };
+
+        const updatedSessions = sessions
+          .map((s) =>
+            s.circle_id === data.circleId && s.status === 'open'
+              ? { ...s, status: 'cancelled' as const }
+              : s
+          )
+          .concat(newSession);
+
+        setSessions(updatedSessions);
+        persistState(
+          currentUser,
+          circles,
+          members,
+          updatedSessions,
+          cartItems,
+          demoOrders,
+          updatedWindows
+        );
+        broadcastUpdate({ sessions: updatedSessions, mealWindows: updatedWindows });
+        createdSession = newSession;
+      } else {
+        persistState(
+          currentUser,
+          circles,
+          members,
+          sessions,
+          cartItems,
+          demoOrders,
+          updatedWindows
+        );
+        broadcastUpdate({ mealWindows: updatedWindows });
+      }
+
+      analyticsService.trackEvent(
+        'meal_session_scheduled',
+        data.circleId,
+        createdSession?.id,
+        currentUser.id,
+        {
+          mealType: data.mealType,
+          recurrence: data.recurrence,
+          pickupPoint: data.pickupPoint,
+        }
+      );
+
+      return { window: newWindow, session: createdSession };
+    },
+    [
+      currentUser,
+      mealWindows,
+      sessions,
+      circles,
+      members,
+      cartItems,
+      demoOrders,
+      persistState,
+      broadcastUpdate,
+    ]
+  );
+
+  const updateParticipation = useCallback(
+    (
+      sessionId: string,
+      userId: string,
+      status: ParticipationStatus,
+      tempBudgetPaise?: number
+    ) => {
+      setSessions((prev) => {
+        const updated = prev.map((s) => {
+          if (s.id !== sessionId) return s;
+          const currentParts = s.participations || {};
+          const updatedParts = {
+            ...currentParts,
+            [userId]: {
+              user_id: userId,
+              status,
+              temporary_budget_paise: tempBudgetPaise,
+              updated_at: new Date().toISOString(),
+            },
+          };
+          return {
+            ...s,
+            participations: updatedParts,
+            updated_at: new Date().toISOString(),
+          };
+        });
+        persistState(currentUser, circles, members, updated, cartItems, demoOrders, mealWindows);
+        broadcastUpdate({ sessions: updated });
+        return updated;
+      });
+
+      analyticsService.trackEvent(
+        status === 'joining' ? 'member_joined_meal' : 'member_skipped_meal',
+        sessions.find((s) => s.id === sessionId)?.circle_id || '',
+        sessionId,
+        userId,
+        { status, tempBudgetPaise }
+      );
+    },
+    [sessions, currentUser, circles, members, cartItems, demoOrders, mealWindows, persistState, broadcastUpdate]
+  );
+
   // Reset demo data
   const resetDemoData = useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -829,6 +1067,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem(STORAGE_KEYS.SESSIONS);
       localStorage.removeItem(STORAGE_KEYS.CART);
       localStorage.removeItem(STORAGE_KEYS.ORDERS);
+      localStorage.removeItem(STORAGE_KEYS.MEAL_WINDOWS);
     }
     setCurrentUser(DEMO_PERSONAS[0]);
     setCircles(INITIAL_CIRCLES);
@@ -836,6 +1075,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSessions(INITIAL_SESSIONS);
     setCartItems(INITIAL_CART_ITEMS);
     setDemoOrders(INITIAL_DEMO_ORDERS);
+    setMealWindows(INITIAL_MEAL_WINDOWS);
 
     broadcastUpdate({
       circles: INITIAL_CIRCLES,
@@ -843,6 +1083,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       sessions: INITIAL_SESSIONS,
       cartItems: INITIAL_CART_ITEMS,
       demoOrders: INITIAL_DEMO_ORDERS,
+      mealWindows: INITIAL_MEAL_WINDOWS,
     });
   }, [broadcastUpdate]);
 
@@ -884,6 +1125,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       startReorderSession,
       getMemberCartTotalPaise,
       getMemberRemainingBudgetPaise,
+      mealWindows,
+      getMealWindows,
+      scheduleMealWindow,
+      updateParticipation,
     }),
     [
       currentUser,
@@ -920,6 +1165,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       startReorderSession,
       getMemberCartTotalPaise,
       getMemberRemainingBudgetPaise,
+      mealWindows,
+      getMealWindows,
+      scheduleMealWindow,
+      updateParticipation,
     ]
   );
 

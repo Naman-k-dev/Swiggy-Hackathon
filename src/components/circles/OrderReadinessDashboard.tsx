@@ -18,6 +18,8 @@ import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatPaise } from '@/lib/utils';
+import { MealWindowSchedulerModal } from '@/components/circles/MealWindowSchedulerModal';
+import { Calendar, Radio } from 'lucide-react';
 
 interface OrderReadinessDashboardProps {
   session: OrderingSession;
@@ -44,9 +46,12 @@ export function OrderReadinessDashboard({
     lockSession,
     reopenSession,
     updatePickupNote,
+    updateParticipation,
+    isSupabaseActive,
   } = useApp();
 
   const [pickupEditing, setPickupEditing] = useState(false);
+  const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [selectedPickup, setSelectedPickup] = useState(
     session.pickup_note || 'Hostel Main Gate / Reception'
   );
@@ -57,6 +62,12 @@ export function OrderReadinessDashboard({
   const totalMembers = members.length;
   const readinessPercent = totalMembers > 0 ? Math.round((readyCount / totalMembers) * 100) : 0;
   const allReady = readyCount >= totalMembers && totalMembers > 0;
+
+  // Participation counts
+  const participations = session.participations || {};
+  const myParticipation = participations[currentUser.id]?.status || 'undecided';
+  const joiningCount = Object.values(participations).filter((p) => p.status === 'joining').length;
+  const skippedCount = Object.values(participations).filter((p) => p.status === 'skipped').length;
 
   const handleToggleMyReady = () => {
     toggleMemberReady(session.id, currentUser.id);
@@ -86,6 +97,31 @@ export function OrderReadinessDashboard({
 
   return (
     <div className="rounded-3xl bg-white border border-charcoal-100 p-6 shadow-sm space-y-6">
+      {/* 0. Top Sync & Recurring Window Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] pb-3 border-b border-charcoal-100">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-1.5 font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+            <Radio className="w-3 h-3 text-emerald-500 animate-pulse" />
+            {isSupabaseActive ? 'Cloud Sync: Active (Supabase)' : 'Realtime: Multi-Tab Broadcast Active'}
+          </span>
+          {session.session_name && (
+            <span className="text-charcoal-700 font-bold bg-orange-50 border border-orange-200/60 px-2.5 py-0.5 rounded-full">
+              🗓️ {session.session_name} ({session.recurrence || 'Weekdays'})
+            </span>
+          )}
+        </div>
+
+        {isAdmin && (
+          <button
+            onClick={() => setSchedulerOpen(true)}
+            className="text-swiggy-orange font-bold hover:underline flex items-center gap-1 text-xs"
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Schedule Meal Window</span>
+          </button>
+        )}
+      </div>
+
       {/* 1. Header: Restaurant Info, Session Status & Cutoff */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-charcoal-100">
         <div className="flex items-center gap-4">
@@ -249,6 +285,40 @@ export function OrderReadinessDashboard({
             );
           })}
         </div>
+
+        {/* Participation Quick Action */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-charcoal-200/50 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-charcoal-500 font-medium">Squad Attendance:</span>
+            <span className="font-bold text-charcoal-900 bg-white px-2 py-0.5 rounded-md border border-charcoal-100">
+              {joiningCount} Joining • {skippedCount} Skipped
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 self-end sm:self-center">
+            <span className="text-[11px] text-charcoal-400 mr-1">Your status:</span>
+            <button
+              onClick={() => updateParticipation(session.id, currentUser.id, 'joining')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
+                myParticipation === 'joining'
+                  ? 'bg-swiggy-orange text-white shadow-xs'
+                  : 'bg-white border border-charcoal-200 text-charcoal-600 hover:bg-charcoal-50'
+              }`}
+            >
+              🍱 I&apos;m In
+            </button>
+            <button
+              onClick={() => updateParticipation(session.id, currentUser.id, 'skipped')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
+                myParticipation === 'skipped'
+                  ? 'bg-charcoal-700 text-white shadow-xs'
+                  : 'bg-white border border-charcoal-200 text-charcoal-600 hover:bg-charcoal-50'
+              }`}
+            >
+              ✋ Skip
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* 3. Feature E: Campus Pickup Point Note */}
@@ -347,6 +417,12 @@ export function OrderReadinessDashboard({
           </div>
         )}
       </div>
+
+      <MealWindowSchedulerModal
+        isOpen={schedulerOpen}
+        onClose={() => setSchedulerOpen(false)}
+        circleId={circleId}
+      />
     </div>
   );
 }

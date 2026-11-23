@@ -44,6 +44,33 @@ export interface CircleMember {
   profile?: StudentProfile;
 }
 
+export type MealType = 'Lunch' | 'Dinner' | 'Snacks' | 'Custom';
+export type RecurrencePattern = 'none' | 'daily' | 'weekdays' | 'custom_days';
+export type ParticipationStatus = 'joining' | 'skipped' | 'undecided';
+
+export interface MemberParticipation {
+  user_id: string;
+  status: ParticipationStatus;
+  temporary_budget_paise?: number;
+  dietary_override?: DietaryPref;
+  updated_at: string;
+}
+
+export interface RecurringMealWindow {
+  id: string;
+  circle_id: string;
+  meal_type: MealType;
+  title: string;
+  target_time: string; // e.g. "13:15" (1:15 PM IST)
+  cutoff_minutes_before: number; // e.g. 30 min before
+  recurrence: RecurrencePattern;
+  preferred_restaurant_id?: string;
+  preferred_restaurant_name?: string;
+  pickup_point: string;
+  active: boolean;
+  created_at: string;
+}
+
 export interface OrderingSession {
   id: string;
   circle_id: string;
@@ -56,6 +83,11 @@ export interface OrderingSession {
   delivery_location: string;
   pickup_note?: string;
   ready_member_ids?: string[];
+  meal_type?: MealType;
+  session_name?: string;
+  scheduled_for?: string;
+  recurrence?: RecurrencePattern;
+  participations?: Record<string, MemberParticipation>;
   created_at: string;
   updated_at?: string;
 }

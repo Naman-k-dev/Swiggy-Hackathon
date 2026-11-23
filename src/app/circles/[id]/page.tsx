@@ -18,6 +18,7 @@ import {
   ShoppingBag,
   Utensils,
   RotateCcw,
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,7 @@ import { CircleMatchModal } from '@/components/circlematch/CircleMatchModal';
 import { OrderReadinessDashboard } from '@/components/circles/OrderReadinessDashboard';
 import { ReorderModal } from '@/components/circles/ReorderModal';
 import { SwiggyCartSyncModal } from '@/components/circles/SwiggyCartSyncModal';
+import { MealWindowSchedulerModal } from '@/components/circles/MealWindowSchedulerModal';
 import { formatPaise, formatRupees, calculateMemberSplit } from '@/lib/utils';
 import { DemoOrder } from '@/types';
 import confetti from 'canvas-confetti';
@@ -51,12 +53,14 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
     getSessionCartItems,
     updateCartQuantity,
     demoOrders,
+    getMealWindows,
   } = useApp();
 
   const circle = getCircle(circleId);
   const members = getCircleMembers(circleId);
   const isAdmin = isCircleAdmin(circleId);
   const activeSession = getSession(circleId);
+  const mealWindows = getMealWindows(circleId);
 
   // Past orders for this circle
   const circleOrders = useMemo(() => {
@@ -68,6 +72,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
   const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
   const [circleMatchOpen, setCircleMatchOpen] = useState(false);
   const [swiggyCartSyncOpen, setSwiggyCartSyncOpen] = useState(false);
+  const [schedulerModalOpen, setSchedulerModalOpen] = useState(false);
   const [reorderModalOrder, setReorderModalOrder] = useState<DemoOrder | null>(null);
   const [deliveryLocation, setDeliveryLocation] = useState(
     activeSession?.delivery_location || 'Hostel Block C - Ground Floor Reception'
@@ -276,6 +281,17 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                     <span>Choose Restaurant & Start Session</span>
                   </Button>
                 </Link>
+                {isAdmin && (
+                  <Button
+                    size="md"
+                    variant="outline"
+                    onClick={() => setSchedulerModalOpen(true)}
+                    className="rounded-2xl font-bold text-xs gap-1.5 border-orange-200 bg-orange-50/50 text-swiggy-dark hover:bg-orange-100"
+                  >
+                    <Calendar className="w-4 h-4 text-swiggy-orange" />
+                    <span>Schedule Meal Window</span>
+                  </Button>
+                )}
                 {circleOrders.length > 0 && (
                   <Button
                     size="md"
@@ -288,6 +304,33 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                   </Button>
                 )}
               </div>
+
+              {/* Scheduled Meal Windows Card */}
+              {mealWindows.length > 0 && (
+                <div className="rounded-2xl bg-gradient-to-r from-orange-50/70 via-white to-orange-50/70 border border-orange-200/80 p-4 text-left space-y-3 mt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider text-swiggy-orange flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5" />
+                      Recurring Campus Meal Windows ({mealWindows.length})
+                    </span>
+                    <Badge variant="orange" size="sm">PW IOI Noida</Badge>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {mealWindows.map((mw) => (
+                      <div key={mw.id} className="p-3 bg-white rounded-xl border border-charcoal-100 shadow-xs flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-bold text-charcoal-900">
+                            {mw.meal_type === 'Lunch' ? '🍱' : mw.meal_type === 'Dinner' ? '🌙' : '☕'} {mw.title}
+                          </p>
+                          <p className="text-[10px] text-charcoal-500 mt-0.5 capitalize">
+                            {mw.target_time} IST • {mw.recurrence} • {mw.pickup_point}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -376,8 +419,15 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                   );
                   const memberProfile = members.find((m) => m.user_id === userId)?.profile;
                   const memberBudgetPaise = (memberProfile?.preferred_budget || circle.preferred_budget || 200) * 100;
-                  const remainingBudgetPaise = memberBudgetPaise - memberSubtotal;
+                  
+                  // Smart Fee Breakdown: Split standard platform fee (₹6 = 600 paise) equally among participating members
+                  const activeMembersCount = Math.max(memberGroups.size, 1);
+                  const estPlatformFeeSharePaise = Math.round(600 / activeMembersCount);
+                  const estTotalPaise = memberSubtotal + estPlatformFeeSharePaise;
+                  const remainingBudgetPaise = memberBudgetPaise - estTotalPaise;
                   const isOverBudget = remainingBudgetPaise < 0;
+                  const budgetUtilizationPct = Math.round((estTotalPaise / memberBudgetPaise) * 100);
+                  const isApproachingBudget = !isOverBudget && budgetUtilizationPct >= 80;
 
                   return (
                     <div
@@ -411,23 +461,32 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                               )}
                             </p>
                             <p className="text-[10px] text-charcoal-500">
-                              {userItems.reduce((s, i) => s + i.quantity, 0)} items • Budget: {formatPaise(memberBudgetPaise)}
+                              {userItems.reduce((s, i) => s + i.quantity, 0)} items • Budget: {formatPaise(memberBudgetPaise)} • Est. Fee Share: {formatPaise(estPlatformFeeSharePaise)}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 self-end sm:self-center">
-                          {isOverBudget ? (
-                            <span className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full animate-pulse">
-                              ⚠️ Exceeded by {formatPaise(Math.abs(remainingBudgetPaise))}
+                        <div className="flex flex-col sm:items-end gap-1">
+                          <div className="flex items-center gap-2 self-end sm:self-center">
+                            {isOverBudget ? (
+                              <span className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+                                <span>⛔</span> Over Budget by {formatPaise(Math.abs(remainingBudgetPaise))}
+                              </span>
+                            ) : isApproachingBudget ? (
+                              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <span>⚠️</span> Approaching Limit ({formatPaise(remainingBudgetPaise)} left)
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <span>✓</span> Safe ({formatPaise(remainingBudgetPaise)} left)
+                              </span>
+                            )}
+                            <span className="font-black text-xs text-charcoal-900">
+                              Est. {formatPaise(estTotalPaise)}
                             </span>
-                          ) : (
-                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                              ✓ {formatPaise(remainingBudgetPaise)} left
-                            </span>
-                          )}
-                          <span className="font-black text-xs text-charcoal-900">
-                            {formatPaise(memberSubtotal)}
+                          </div>
+                          <span className="text-[9px] text-charcoal-400 self-end">
+                            (Dishes: {formatPaise(memberSubtotal)} + Fee: {formatPaise(estPlatformFeeSharePaise)})
                           </span>
                         </div>
                       </div>
@@ -840,6 +899,13 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
           circleId={circleId}
         />
       )}
+
+      {/* 9. Recurring Meal Window Scheduler Modal (Part 4) */}
+      <MealWindowSchedulerModal
+        isOpen={schedulerModalOpen}
+        onClose={() => setSchedulerModalOpen(false)}
+        circleId={circleId}
+      />
     </div>
   );
 }
