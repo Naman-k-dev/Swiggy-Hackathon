@@ -267,7 +267,7 @@ npm run build
 1. **Explore the Landing Page (`/`):**
    - Review the problem statement, campus metrics, and live visual mockup.
 2. **Open the Dashboard (`/dashboard`):**
-   - See pre-seeded "CSE Lunch Squad" circle at BITS Pilani.
+   - See pre-seeded "CSE Lunch Squad" circle at PW Institute of Innovation Noida.
    - Observe the live active session from *Rolls & Bowls Co.*.
 3. **Experience CircleMatch AI (`/circles/circle-cse-lunch-squad`):**
    - Click the prominent **"Find Our Perfect Meal ✨"** button at the top of the Circle Details screen.

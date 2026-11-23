@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useApp } from '@/lib/store/demo-context';
+import { DEFAULT_CAMPUS_NAME } from '@/lib/data/mock-seed';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Play, Sparkles, CheckCircle2 } from 'lucide-react';
@@ -28,7 +29,7 @@ export function DemoPreview() {
           </h2>
 
           <p className="text-charcoal-300 text-base sm:text-lg leading-relaxed">
-            We have pre-seeded a full simulation for <strong>BITS Pilani - Hyderabad Campus</strong> with 4 student personas, an active ordering session at <strong>Rolls & Bowls Co.</strong>, and live shared cart synchronisation.
+            We have pre-seeded a full simulation for <strong>{sampleCircle?.college || DEFAULT_CAMPUS_NAME}</strong> with 4 student personas, an active ordering session at <strong>Rolls & Bowls Co.</strong>, and live shared cart synchronisation.
           </p>
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">

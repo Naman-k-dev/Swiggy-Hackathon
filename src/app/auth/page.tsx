@@ -144,7 +144,7 @@ export default function AuthPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="student@bits-pilani.ac.in"
+                    placeholder="student@pw.edu"
                     className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-charcoal-200 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange focus:border-transparent"
                     required
                   />
