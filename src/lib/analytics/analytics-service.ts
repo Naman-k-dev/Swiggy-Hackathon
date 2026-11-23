@@ -131,11 +131,15 @@ class AnalyticsService {
     return newEvent;
   }
 
+  public getEvents(): AnalyticsEvent[] {
+    return this.events;
+  }
+
   public getSummary(): BusinessAnalyticsSummary {
     const starts = this.events.filter((e) => e.event === 'circlematch_started').length;
     const generated = this.events.filter((e) => e.event === 'recommendations_generated').length;
     const accepted = this.events.filter((e) => e.event === 'recommendation_accepted').length;
-    const finalized = this.events.filter((e) => e.event === 'cart_finalized_after_ai').length;
+    const finalized = this.events.filter((e) => e.event === 'cart_finalized_after_ai' || e.event === 'order_finalized').length;
 
     const acceptanceRate = generated > 0 ? Math.round((accepted / generated) * 100) : 0;
     const conversionRate = starts > 0 ? Math.round((finalized / starts) * 100) : 0;
@@ -164,6 +168,68 @@ class AnalyticsService {
       avgOrderValuePaiseWithAI: avgAOVPaise,
       recentEvents: this.events.slice(0, 10),
     };
+  }
+
+  /**
+   * Generates RFC 4180 compliant CSV export of recorded events and research summary metrics.
+   * Privacy-conscious: excludes credentials, tokens, or PII.
+   */
+  public exportAnalyticsCSV(): string {
+    const summary = this.getSummary();
+    const rows: string[] = [];
+
+    // Header row
+    rows.push('Event ID,Timestamp,Event Type,Circle ID,Session ID,User ID,Properties');
+
+    for (const evt of this.events) {
+      const escapedProperties = evt.properties
+        ? `"${JSON.stringify(evt.properties).replace(/"/g, '""')}"`
+        : '""';
+
+      rows.push(
+        [
+          evt.id,
+          evt.timestamp,
+          evt.event,
+          evt.circleId,
+          evt.sessionId || '',
+          evt.userId || '',
+          escapedProperties,
+        ].join(',')
+      );
+    }
+
+    // Append summary research section
+    rows.push('');
+    rows.push('--- RESEARCH METRICS SUMMARY ---');
+    rows.push('Metric,Value');
+    rows.push(`Total Match Sessions,${summary.totalMatchSessions}`);
+    rows.push(`AI Recommendations Generated,${summary.recommendationsGenerated}`);
+    rows.push(`AI Recommendations Accepted,${summary.recommendationsAccepted}`);
+    rows.push(`Recommendation Acceptance Rate,${summary.acceptanceRatePct}%`);
+    rows.push(`Cart Conversion Rate,${summary.cartConversionRatePct}%`);
+    rows.push(`Median Decision Time (Seconds),${summary.medianTimeToMatchSec}`);
+    rows.push(`Average Group Order Value (INR),Rs ${Math.round(summary.avgOrderValuePaiseWithAI / 100)}`);
+
+    return rows.join('\n');
+  }
+
+  /**
+   * Browser-safe client file download trigger
+   */
+  public downloadCSV(): void {
+    if (typeof window === 'undefined') return;
+
+    const csvContent = this.exportAnalyticsCSV();
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `swiggy_campus_circles_telemetry_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   public resetAnalytics() {

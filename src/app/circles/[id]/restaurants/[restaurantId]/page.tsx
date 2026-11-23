@@ -158,14 +158,15 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-charcoal-900 tracking-tight">
               {restaurant.name}
             </h1>
+            <Badge variant="orange" size="sm" className="gap-1 font-bold">
+              <span className={`w-1.5 h-1.5 rounded-full ${restaurant.source === 'swiggy_mcp_live' ? 'bg-emerald-500' : 'bg-swiggy-orange'}`} />
+              <span>{restaurant.source === 'swiggy_mcp_live' ? 'Swiggy Food MCP' : 'Campus Verified Menu'}</span>
+            </Badge>
             {restaurant.is_pure_veg && (
               <Badge variant="success" size="sm" className="font-bold">
                 Pure Veg
               </Badge>
             )}
-            <Badge variant="orange" size="sm">
-              Demo Menu
-            </Badge>
           </div>
 
           <p className="text-xs sm:text-sm text-charcoal-500">

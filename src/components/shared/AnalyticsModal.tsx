@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Sparkles,
   RefreshCw,
+  Download,
 } from 'lucide-react';
 import { analyticsService } from '@/lib/analytics/analytics-service';
 import { formatPaise } from '@/lib/utils';
@@ -106,16 +107,26 @@ export function AnalyticsModal({ isOpen, onClose }: AnalyticsModalProps) {
             <p className="font-bold text-xs uppercase tracking-wider text-charcoal-500">
               Telemetry Event Stream ({summary.recentEvents.length} events logged)
             </p>
-            <button
-              onClick={() => {
-                analyticsService.resetAnalytics();
-                loadData();
-              }}
-              className="text-[11px] text-charcoal-400 hover:text-charcoal-700 flex items-center gap-1 font-semibold"
-            >
-              <RefreshCw className="w-3 h-3" />
-              Reset Event Log
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => analyticsService.downloadCSV()}
+                className="text-[11px] text-swiggy-orange hover:text-orange-700 flex items-center gap-1 font-bold bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-200 transition hover:scale-105"
+                title="Download full CSV dataset for campus research"
+              >
+                <Download className="w-3 h-3" />
+                Export Research CSV
+              </button>
+              <button
+                onClick={() => {
+                  analyticsService.resetAnalytics();
+                  loadData();
+                }}
+                className="text-[11px] text-charcoal-400 hover:text-charcoal-700 flex items-center gap-1 font-semibold"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Reset Log
+              </button>
+            </div>
           </div>
 
           <div className="rounded-2xl border border-charcoal-200 overflow-hidden bg-white max-h-48 overflow-y-auto">

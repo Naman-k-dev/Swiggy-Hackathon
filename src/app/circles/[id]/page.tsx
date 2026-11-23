@@ -25,6 +25,7 @@ import { Modal } from '@/components/ui/modal';
 import { CircleMatchModal } from '@/components/circlematch/CircleMatchModal';
 import { OrderReadinessDashboard } from '@/components/circles/OrderReadinessDashboard';
 import { ReorderModal } from '@/components/circles/ReorderModal';
+import { SwiggyCartSyncModal } from '@/components/circles/SwiggyCartSyncModal';
 import { formatPaise, formatRupees, calculateMemberSplit } from '@/lib/utils';
 import { DemoOrder } from '@/types';
 import confetti from 'canvas-confetti';
@@ -66,6 +67,7 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
   const [circleMatchOpen, setCircleMatchOpen] = useState(false);
+  const [swiggyCartSyncOpen, setSwiggyCartSyncOpen] = useState(false);
   const [reorderModalOrder, setReorderModalOrder] = useState<DemoOrder | null>(null);
   const [deliveryLocation, setDeliveryLocation] = useState(
     activeSession?.delivery_location || 'Hostel Block C - Ground Floor Reception'
@@ -302,13 +304,27 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                 </p>
               </div>
 
-              <div className="text-right">
-                <span className="text-xs text-charcoal-400 font-semibold">
-                  {totalItemsCount} {totalItemsCount === 1 ? 'dish' : 'dishes'}
-                </span>
-                <p className="text-xl font-black text-charcoal-900">
-                  {formatPaise(subtotalPaise)}
-                </p>
+              <div className="flex items-center gap-3">
+                {activeSession && cartItems.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSwiggyCartSyncOpen(true)}
+                    className="rounded-xl border-orange-200 text-swiggy-dark font-bold text-xs gap-1.5 hover:bg-orange-50"
+                    title="Sync collaborative items to your Swiggy app cart via Food MCP"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5 text-swiggy-orange" />
+                    <span className="hidden sm:inline">Sync to Swiggy 🛒</span>
+                  </Button>
+                )}
+                <div className="text-right">
+                  <span className="text-xs text-charcoal-400 font-semibold">
+                    {totalItemsCount} {totalItemsCount === 1 ? 'dish' : 'dishes'}
+                  </span>
+                  <p className="text-xl font-black text-charcoal-900">
+                    {formatPaise(subtotalPaise)}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -809,6 +825,18 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
           isOpen={Boolean(reorderModalOrder)}
           onClose={() => setReorderModalOrder(null)}
           order={reorderModalOrder}
+          circleId={circleId}
+        />
+      )}
+
+      {/* 8. Swiggy Food MCP Cart Sync Modal (Phase 4) */}
+      {activeSession && (
+        <SwiggyCartSyncModal
+          isOpen={swiggyCartSyncOpen}
+          onClose={() => setSwiggyCartSyncOpen(false)}
+          restaurantId={activeSession.restaurant_id}
+          restaurantName={activeSession.restaurant_name}
+          cartItems={cartItems}
           circleId={circleId}
         />
       )}

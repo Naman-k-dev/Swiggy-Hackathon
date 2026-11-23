@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/lib/store/demo-context';
 import { Users, Sparkles, RefreshCw, Radio, Check, BarChart3 } from 'lucide-react';
 import Image from 'next/image';
@@ -19,6 +19,26 @@ export function PersonaSwitcherBar() {
 
   const [guideOpen, setGuideOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [mcpStatus, setMcpStatus] = useState<{ isConnected: boolean; isLive: boolean } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/swiggy/status')
+      .then((r) => r.json())
+      .then((d) => setMcpStatus(d))
+      .catch(() => setMcpStatus({ isConnected: false, isLive: false }));
+  }, []);
+
+  const handleToggleMCP = async () => {
+    if (mcpStatus?.isLive) {
+      if (confirm('Disconnect Swiggy Food MCP and switch to Campus Verified Demo Menus?')) {
+        await fetch('/api/auth/swiggy/disconnect', { method: 'POST' });
+        setMcpStatus({ isConnected: false, isLive: false });
+        window.location.reload();
+      }
+    } else {
+      window.location.href = '/api/auth/swiggy/authorize?mode=sandbox';
+    }
+  };
 
   const handleReset = () => {
     if (confirm('Reset prototype to initial seeded state (Aarav, Ananya, Rohan, Priya & sample orders)?')) {
@@ -44,10 +64,10 @@ export function PersonaSwitcherBar() {
               <span className="text-charcoal-300 hidden sm:inline">|</span>
               <div className="flex items-center gap-1.5 text-charcoal-800">
                 <Users className="w-3.5 h-3.5 text-swiggy-orange" />
-                <span className="hidden md:inline text-charcoal-500 text-[11px]">Viewing as:</span>
-                <span className="font-bold text-xs bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200 text-swiggy-orange">{currentUser.full_name}</span>
+                <span className="hidden md:inline text-charcoal-500 text-xs">Viewing:</span>
+                <span className="font-bold text-xs text-charcoal-900">{currentUser.full_name}</span>
                 {currentUser.id.endsWith('1') && (
-                  <span className="text-[10px] py-0.5 px-2 bg-swiggy-orange/15 border border-swiggy-orange/30 text-swiggy-orange font-bold rounded-full">
+                  <span className="text-[10px] font-bold text-swiggy-dark bg-orange-100 px-2 py-0.5 rounded-full border border-orange-200">
                     Admin
                   </span>
                 )}
@@ -87,8 +107,30 @@ export function PersonaSwitcherBar() {
               })}
             </div>
 
-            {/* Right: AI Metrics, Sync Status & Reset */}
+            {/* Right: MCP Status Pill, AI Metrics & Reset */}
             <div className="flex items-center gap-2.5">
+              {/* Data Source & MCP Status Pill */}
+              <button
+                onClick={handleToggleMCP}
+                className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-full border transition-all duration-200 hover:scale-105 ${
+                  mcpStatus?.isLive
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : 'bg-orange-50 text-orange-800 border-orange-200'
+                }`}
+                title={
+                  mcpStatus?.isLive
+                    ? 'Connected to Swiggy Food MCP. Click to toggle to Demo mode.'
+                    : 'Click to connect Swiggy Food MCP OAuth 2.1.'
+                }
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    mcpStatus?.isLive ? 'bg-emerald-500 animate-pulse' : 'bg-swiggy-orange'
+                  }`}
+                />
+                <span>{mcpStatus?.isLive ? '🟢 Swiggy MCP Live' : '🏷️ Campus Demo'}</span>
+              </button>
+
               <button
                 onClick={() => setAnalyticsOpen(true)}
                 className="flex items-center gap-1.5 bg-charcoal-50 hover:bg-orange-100 text-charcoal-700 hover:text-charcoal-900 px-2.5 py-1 text-[10px] font-medium rounded-full border border-charcoal-200/60 transition-all duration-200 hover:scale-105"

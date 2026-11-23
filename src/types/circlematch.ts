@@ -83,6 +83,8 @@ export interface CircleMatchSession {
 }
 
 export type AnalyticsEventType =
+  | 'circle_created'
+  | 'member_joined'
   | 'circlematch_started'
   | 'preferences_completed'
   | 'recommendations_generated'
@@ -90,7 +92,10 @@ export type AnalyticsEventType =
   | 'recommendation_accepted'
   | 'dish_replaced'
   | 'cart_added_from_ai'
+  | 'cart_completed'
   | 'cart_finalized_after_ai'
+  | 'order_finalized'
+  | 'swiggy_cart_synced'
   | 'circlematch_abandoned';
 
 export interface AnalyticsEvent {

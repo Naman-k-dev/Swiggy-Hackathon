@@ -142,6 +142,8 @@ export interface MenuCategory {
   items: MenuItem[];
 }
 
+export type RestaurantDataSource = 'swiggy_mcp_live' | 'campus_verified_demo' | 'cached';
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -154,5 +156,7 @@ export interface Restaurant {
   price_for_one: number; // in Rupees
   is_pure_veg: boolean;
   offer?: string;
+  source?: RestaurantDataSource;
+  address?: string;
   menu_categories: MenuCategory[];
 }

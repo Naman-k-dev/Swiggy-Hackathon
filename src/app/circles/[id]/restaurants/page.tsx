@@ -104,12 +104,13 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
             <ArrowLeft className="w-3.5 h-3.5" />
             Back to {circle.name}
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-charcoal-900 tracking-tight">
               Select Restaurant for Circle Session
             </h1>
-            <Badge variant="orange" size="sm">
-              Demo Catalog
+            <Badge variant="orange" size="sm" className="gap-1 font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Swiggy Food MCP / Campus Catalog
             </Badge>
           </div>
           <p className="text-xs text-charcoal-500 mt-1">
@@ -253,6 +254,12 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
                     <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm text-charcoal-800 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
                       <Clock className="w-3 h-3 text-swiggy-orange" />
                       <span>{restaurant.delivery_time_min} mins</span>
+                    </div>
+
+                    {/* Data Source Badge */}
+                    <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur-sm text-[9px] font-bold px-2 py-0.5 rounded-full shadow-xs border border-charcoal-200/60 flex items-center gap-1">
+                      <span className={`w-1.5 h-1.5 rounded-full ${restaurant.source === 'swiggy_mcp_live' ? 'bg-emerald-500' : 'bg-swiggy-orange'}`} />
+                      <span>{restaurant.source === 'swiggy_mcp_live' ? 'Swiggy Live' : 'Verified Campus'}</span>
                     </div>
                   </div>
 

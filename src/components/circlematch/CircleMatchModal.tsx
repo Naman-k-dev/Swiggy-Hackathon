@@ -11,7 +11,9 @@ import {
   AlertTriangle,
   RotateCcw,
   Star,
+  ShoppingBag,
 } from 'lucide-react';
+import { SwiggyCartSyncModal } from '@/components/circles/SwiggyCartSyncModal';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -75,6 +77,10 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
   // Editable Member Meal Plans for Customization (Screen 4)
   const [customizedPlans, setCustomizedPlans] = useState<MemberMealPlan[]>([]);
   const [swappingUser, setSwappingUser] = useState<string | null>(null);
+
+  // Phase 4: Data Source Selection (Swiggy Food MCP Live vs Campus Verified Demo)
+  const [dataSourceMode, setDataSourceMode] = useState<'live' | 'demo'>('live');
+  const [showSwiggyCartSync, setShowSwiggyCartSync] = useState(false);
 
   // Initialize Member Preferences based on their profiles
   useEffect(() => {
@@ -154,23 +160,46 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
   };
 
   // Launch AI Matching
-  const handleStartMatching = () => {
+  const handleStartMatching = async () => {
     analyticsService.trackEvent('circlematch_started', circleId, undefined, currentUser.id, {
       memberCount: members.length,
+      dataSourceMode,
     });
     analyticsService.trackEvent('preferences_completed', circleId, undefined, currentUser.id);
 
     setCurrentStep(2); // Show progressive matching animation
 
+    // Fetch candidate restaurants based on chosen data source
+    let candidateRestaurants = restaurants;
+    if (dataSourceMode === 'live') {
+      try {
+        const res = await fetch('/api/mcp/restaurants?mode=live');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.restaurants) && data.restaurants.length > 0) {
+            candidateRestaurants = data.restaurants;
+          }
+        }
+      } catch {
+        // Fallback to local demo restaurants
+      }
+    }
+
     setTimeout(() => {
       // Deterministic optimization run
       const prefsList = Object.values(memberPrefs);
-      const matchResult = findGroupMatches(prefsList, restaurants);
+      let matchResult = findGroupMatches(prefsList, candidateRestaurants);
+
+      // If live yielded no feasible restaurants, gracefully fall back to verified campus catalog
+      if (matchResult.recommendations.length === 0 && candidateRestaurants !== restaurants) {
+        matchResult = findGroupMatches(prefsList, restaurants);
+      }
 
       setRecommendations(matchResult.recommendations);
       analyticsService.trackEvent('recommendations_generated', circleId, undefined, currentUser.id, {
         count: matchResult.recommendations.length,
         topScore: matchResult.recommendations[0]?.groupSatisfactionScore || 0,
+        dataSource: dataSourceMode,
       });
 
       if (matchResult.recommendations.length > 0) {
@@ -324,6 +353,24 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
             <p className="text-xs text-charcoal-500 mt-1">
               Confirm each student&apos;s budget and cravings. The AI optimizer finds a single campus restaurant that satisfies everyone.
             </p>
+
+            {/* Phase 4 Live MCP vs Demo Switcher */}
+            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-charcoal-100/60">
+              <span className="text-[11px] font-bold text-charcoal-500">Live Menu Provider:</span>
+              <button
+                type="button"
+                onClick={() => setDataSourceMode(dataSourceMode === 'live' ? 'demo' : 'live')}
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold transition flex items-center gap-1.5 border ${
+                  dataSourceMode === 'live'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : 'bg-orange-50 text-orange-800 border-orange-200'
+                }`}
+                title="Click to toggle between Swiggy Live Food MCP and Verified Campus Demo menus"
+              >
+                <span className={`w-2 h-2 rounded-full ${dataSourceMode === 'live' ? 'bg-emerald-500 animate-pulse' : 'bg-swiggy-orange'}`} />
+                <span>{dataSourceMode === 'live' ? '🟢 Swiggy Food MCP (Live)' : '🏷️ Campus Verified Catalog'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Members Preferences Grid */}
@@ -886,14 +933,36 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
             </p>
           </div>
 
-          <Button
-            size="lg"
-            className="w-full rounded-2xl font-bold text-sm shadow-md"
-            onClick={onClose}
-          >
-            Open Group Cart Now
-          </Button>
+          <div className="space-y-2">
+            <Button
+              size="lg"
+              className="w-full rounded-2xl font-bold text-sm shadow-md"
+              onClick={onClose}
+            >
+              Open Group Cart Now
+            </Button>
+            <Button
+              variant="outline"
+              size="md"
+              className="w-full rounded-2xl font-bold text-xs border-orange-200 text-swiggy-dark hover:bg-orange-50 flex items-center justify-center gap-2"
+              onClick={() => setShowSwiggyCartSync(true)}
+            >
+              <ShoppingBag className="w-4 h-4 text-swiggy-orange" />
+              <span>Sync to Swiggy App Cart (Food MCP)</span>
+            </Button>
+          </div>
         </div>
+      )}
+
+      {showSwiggyCartSync && selectedPlan && (
+        <SwiggyCartSyncModal
+          isOpen={showSwiggyCartSync}
+          onClose={() => setShowSwiggyCartSync(false)}
+          restaurantId={selectedPlan.restaurantId}
+          restaurantName={selectedPlan.restaurantName}
+          cartItems={cartItems}
+          circleId={circleId}
+        />
       )}
     </Modal>
   );
