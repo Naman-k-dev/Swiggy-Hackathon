@@ -121,6 +121,36 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* CircleMatch AI Feature Spotlight Banner */}
+      <div className="rounded-[2.5rem] bg-gradient-to-r from-orange-500 via-amber-500 to-swiggy-orange text-white p-6 shadow-xl relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
+              <span>Phase 2 Live: CircleMatch AI</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight">
+              Different cravings? One perfect circle meal.
+            </h2>
+            <p className="text-xs sm:text-sm text-white/90 max-w-xl leading-relaxed">
+              Eliminate campus group dining debates in seconds. CircleMatch AI automatically balances veg/non-veg diets, individual student budgets, and cravings across your circle.
+            </p>
+          </div>
+          {userCircles.length > 0 && (
+            <Link href={`/circles/${userCircles[0].id}`}>
+              <Button
+                size="lg"
+                className="bg-white text-swiggy-orange hover:bg-orange-50 font-black text-sm px-6 py-5 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2 whitespace-nowrap"
+              >
+                <Sparkles className="w-4 h-4 text-swiggy-orange animate-pulse" />
+                <span>Launch CircleMatch AI ✨</span>
+              </Button>
+            </Link>
+          )}
+        </div>
+      </div>
+
       {/* 2. Active Session Alert (If any) */}
       {activeSessionCircle && activeSession && (
         <div className="rounded-[2.5rem] glass-card border-white/40 shadow-glass p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -309,8 +339,9 @@ export default function DashboardPage() {
                     </div>
 
                     <Link href={`/circles/${circle.id}`}>
-                      <Button size="sm" className="rounded-xl text-xs font-bold gap-1 shadow-glass glass-card border-white/40">
-                        <span>Enter</span>
+                      <Button size="sm" className="rounded-xl text-xs font-bold gap-1 shadow-glass glass-card border-white/40 hover:border-swiggy-orange/50 transition-colors">
+                        <Sparkles className="w-3.5 h-3.5 text-swiggy-orange" />
+                        <span>AI Match</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </Button>
                     </Link>

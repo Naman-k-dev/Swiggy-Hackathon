@@ -34,7 +34,10 @@ export function HeroSection() {
               <span className="flex h-2 w-2 rounded-full bg-swiggy-orange animate-pulse shadow-[0_0_8px_rgba(252,128,25,0.6)]" />
               <span className="text-swiggy-orange font-bold uppercase tracking-tight">Swiggy Food for Thought 2.0</span>
               <span className="text-charcoal-300">|</span>
-              <span className="text-charcoal-600">Next-Gen Campus Dining</span>
+              <span className="text-charcoal-700 font-bold flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-swiggy-orange" />
+                CircleMatch AI Live
+              </span>
             </div>
 
             {/* Headline */}
