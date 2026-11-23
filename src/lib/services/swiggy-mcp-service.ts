@@ -78,9 +78,9 @@ export class SwiggyMCPService {
 
   constructor() {
     this.config = {
-      clientId: process.env.SWIGGY_CLIENT_ID || 'demo_campus_client',
+      clientId: process.env.SWIGGY_CLIENT_ID || '',
       clientSecret: process.env.SWIGGY_CLIENT_SECRET,
-      redirectUri: process.env.SWIGGY_REDIRECT_URI || 'http://localhost:3000/api/auth/swiggy/callback',
+      redirectUri: process.env.SWIGGY_REDIRECT_URI || 'https://swiggyhackathon.vercel.app/api/auth/swiggy/callback',
       scope: ['food.read', 'menu.read', 'cart.write'],
       authBaseUrl: process.env.SWIGGY_AUTH_BASE_URL || 'https://mcp.swiggy.com/auth',
       mcpServerUrl: process.env.SWIGGY_MCP_SERVER_URL || 'https://mcp.swiggy.com/food',
