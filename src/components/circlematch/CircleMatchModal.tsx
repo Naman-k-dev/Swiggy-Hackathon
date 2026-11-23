@@ -78,7 +78,14 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
 
   // Initialize Member Preferences based on their profiles
   useEffect(() => {
-    if (!members || members.length === 0) return;
+    if (!isOpen || !members || members.length === 0) return;
+
+    // Only initialize if we don't have preferences for these members yet
+    // or if the member count changed significantly
+    const currentPrefIds = Object.keys(memberPrefs);
+    if (currentPrefIds.length === members.length && members.every(m => currentPrefIds.includes(m.user_id))) {
+      return;
+    }
 
     const initialPrefs: Record<string, MemberMealPreference> = {};
 
@@ -119,7 +126,7 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
     });
 
     setMemberPrefs(initialPrefs);
-  }, [members]);
+  }, [isOpen, circleId, members, memberPrefs]);
 
   // Handle Preference Change for a specific student
   const updateStudentPref = (
