@@ -16,6 +16,8 @@ import {
   TrendingDown,
   Calendar,
   AlertCircle,
+  Database,
+  CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +35,17 @@ export default function DashboardPage() {
     getOrdersForUser,
     getCircleByInviteCode,
     joinCircle,
+    importDemoData,
+    hasDemoData,
   } = useApp();
+
+  const [demoLoadedMsg, setDemoLoadedMsg] = useState(false);
+
+  const handleImportDemo = () => {
+    importDemoData();
+    setDemoLoadedMsg(true);
+    setTimeout(() => setDemoLoadedMsg(false), 3500);
+  };
 
   React.useEffect(() => {
     if (!isAuthenticated) {
@@ -108,7 +120,27 @@ export default function DashboardPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+          <Button
+            variant="outline"
+            size="md"
+            onClick={handleImportDemo}
+            className="glass-pill dark:bg-slate-900 dark:border-orange-500/30 text-swiggy-orange hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-2xl gap-1.5 text-xs font-bold"
+            title="Pre-populate mock campus squads and active carts for judging"
+          >
+            {demoLoadedMsg ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="text-emerald-600 dark:text-emerald-400">Demo Loaded!</span>
+              </>
+            ) : (
+              <>
+                <Database className="w-3.5 h-3.5 text-swiggy-orange" />
+                <span>Import Demo Data</span>
+              </>
+            )}
+          </Button>
+
           <Button
             variant="outline"
             size="md"
@@ -254,12 +286,20 @@ export default function DashboardPage() {
                 Create a circle for your hostel roommates or join an existing circle with an invite code.
               </p>
             </div>
-            <div className="flex justify-center gap-3">
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button
+                size="sm"
+                onClick={handleImportDemo}
+                className="rounded-xl font-bold bg-swiggy-orange text-white shadow-sm flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Import Demo Squads & Cart</span>
+              </Button>
               <Button size="sm" onClick={() => setJoinModalOpen(true)} variant="outline" className="glass-pill dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200">
                 Join with Code
               </Button>
               <Link href="/circles/create">
-                <Button size="sm" className="rounded-xl shadow-highlight bg-swiggy-orange text-white">Create Circle</Button>
+                <Button size="sm" variant="outline" className="rounded-xl border-dashed dark:border-slate-700 dark:text-slate-300">Create Circle</Button>
               </Link>
             </div>
           </div>

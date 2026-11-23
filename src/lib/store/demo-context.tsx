@@ -183,6 +183,8 @@ interface AppContextType {
   isRealtimeConnected: boolean;
   isSupabaseActive: boolean;
   resetDemoData: () => void;
+  importDemoData: () => void;
+  hasDemoData: boolean;
   // Theme & Profile Creation
   theme: 'light' | 'dark';
   toggleTheme: () => void;
@@ -1782,6 +1784,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem(STORAGE_KEYS.VOTE_SESSIONS);
       localStorage.removeItem(STORAGE_KEYS.RESCUE_ISSUE);
     }
+    setCurrentUser(GUEST_USER);
+    setCircles([]);
+    setMembers([]);
+    setSessions([]);
+    setCartItems([]);
+    setDemoOrders([]);
+    setMealWindows([]);
+    setVoteSessions([]);
+    setActiveRescueIssue(null);
+
+    broadcastUpdate({
+      circles: [],
+      members: [],
+      sessions: [],
+      cartItems: [],
+      demoOrders: [],
+      mealWindows: [],
+      voteSessions: [],
+      activeRescueIssue: null,
+    });
+  }, [broadcastUpdate]);
+
+  // Import demo data for judges
+  const importDemoData = useCallback(() => {
     setCurrentUser(DEMO_PERSONAS[0]);
     setCircles(INITIAL_CIRCLES);
     setMembers(INITIAL_CIRCLE_MEMBERS);
@@ -1791,6 +1817,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMealWindows(INITIAL_MEAL_WINDOWS);
     setVoteSessions(INITIAL_VOTE_SESSIONS);
     setActiveRescueIssue(null);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(DEMO_PERSONAS[0]));
+        localStorage.setItem(STORAGE_KEYS.CIRCLES, JSON.stringify(INITIAL_CIRCLES));
+        localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(INITIAL_CIRCLE_MEMBERS));
+        localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(INITIAL_SESSIONS));
+        localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(INITIAL_CART_ITEMS));
+        localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(INITIAL_DEMO_ORDERS));
+        localStorage.setItem(STORAGE_KEYS.MEAL_WINDOWS, JSON.stringify(INITIAL_MEAL_WINDOWS));
+        localStorage.setItem(STORAGE_KEYS.VOTE_SESSIONS, JSON.stringify(INITIAL_VOTE_SESSIONS));
+      } catch {}
+    }
 
     broadcastUpdate({
       circles: INITIAL_CIRCLES,
@@ -1803,6 +1842,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       activeRescueIssue: null,
     });
   }, [broadcastUpdate]);
+
+  const hasDemoData = circles.length > 0;
 
   const value = useMemo(
     () => ({
@@ -1836,6 +1877,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       isRealtimeConnected,
       isSupabaseActive: isSupabaseConfigured,
       resetDemoData,
+      importDemoData,
+      hasDemoData,
       isLoaded: mounted,
       toggleMemberReady,
       updatePickupNote,
@@ -1897,6 +1940,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       getRestaurant,
       isRealtimeConnected,
       resetDemoData,
+      importDemoData,
+      hasDemoData,
       mounted,
       toggleMemberReady,
       updatePickupNote,
