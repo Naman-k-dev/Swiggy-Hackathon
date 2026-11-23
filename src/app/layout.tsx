@@ -1,20 +1,9 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { AppProvider } from '@/lib/store/demo-context';
 import { PersonaSwitcherBar } from '@/components/shared/PersonaSwitcherBar';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
   title: 'Swiggy Campus Circles — Your Campus. Your Circle. Your Food.',
@@ -33,7 +22,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-[#FAFAF8] text-charcoal-900 selection:bg-swiggy-light selection:text-swiggy-orange`}
+        className="antialiased min-h-screen flex flex-col bg-[#FAFAF8] text-charcoal-900 selection:bg-swiggy-light selection:text-swiggy-orange"
+        style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif' }}
       >
         <AppProvider>
           <PersonaSwitcherBar />
