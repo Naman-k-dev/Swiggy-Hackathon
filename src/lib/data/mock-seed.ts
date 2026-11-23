@@ -1,4 +1,4 @@
-import { Circle, CircleMember, OrderingSession, CartItem, StudentProfile, DemoOrder, RecurringMealWindow } from '@/types';
+import { Circle, CircleMember, OrderingSession, CartItem, StudentProfile, DemoOrder, RecurringMealWindow, CircleVoteSession } from '@/types';
 
 export const DEFAULT_CAMPUS_NAME =
   process.env.NEXT_PUBLIC_CAMPUS_NAME || 'PW Institute of Innovation Noida';
@@ -303,5 +303,87 @@ export const INITIAL_DEMO_ORDERS: DemoOrder[] = [
         items: [],
       },
     ],
+  },
+];
+
+export const INITIAL_VOTE_SESSIONS: CircleVoteSession[] = [
+  {
+    id: 'vote-cse-lunch-today',
+    circle_id: 'circle-cse-lunch-squad',
+    meal_session_id: 'sess-cse-today',
+    created_by: 'a0000000-0000-0000-0000-000000000001',
+    title: 'CSE Squad Lunch Decision Room',
+    status: 'active',
+    cutoff_time: new Date(Date.now() + 18 * 60000).toISOString(),
+    options: [
+      {
+        id: 'opt-cse-1',
+        restaurant_id: 'rest-rolls-bowls',
+        restaurant_name: 'Rolls & Bowls Co.',
+        restaurant_image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80',
+        cuisine: ['Rolls', 'North Indian', 'Bowls'],
+        price_range_text: '₹140–₹240 per person',
+        group_compatibility_score: 92,
+        estimated_group_subtotal_paise: 58000,
+        dietary_summary: 'Strictly verified: 4 vegetarian rolls for Ananya & Priya',
+        budget_summary: '100% of participants have options within their budget limit',
+        source: 'circlematch_ai',
+        vote_count: 1,
+        voter_user_ids: ['a0000000-0000-0000-0000-000000000001'],
+      },
+      {
+        id: 'opt-cse-2',
+        restaurant_id: 'rest-south-express',
+        restaurant_name: 'South Indian Express',
+        restaurant_image: 'https://images.unsplash.com/photo-1610192244261-3f33de3f55e4?w=600&auto=format&fit=crop&q=80',
+        cuisine: ['South Indian', 'Dosa', 'Filter Coffee'],
+        price_range_text: '₹120–₹210 per person',
+        group_compatibility_score: 95,
+        estimated_group_subtotal_paise: 51000,
+        dietary_summary: 'Pure veg & vegan friendly campus canteen favorite',
+        budget_summary: 'Budget-friendly meals under ₹180 for all 4 members',
+        source: 'campus_catalog',
+        vote_count: 1,
+        voter_user_ids: ['a0000000-0000-0000-0000-000000000002'],
+      },
+      {
+        id: 'opt-cse-3',
+        restaurant_id: 'rest-biryani-life',
+        restaurant_name: 'Biryani Life & Co.',
+        restaurant_image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600&auto=format&fit=crop&q=80',
+        cuisine: ['Biryani', 'Mughlai', 'Kebabs'],
+        price_range_text: '₹180–₹320 per person',
+        group_compatibility_score: 84,
+        estimated_group_subtotal_paise: 68000,
+        dietary_summary: 'Separate veg dum biryani pots; halal certified kitchen',
+        budget_summary: 'Slightly higher price point for premium meals',
+        source: 'swiggy_mcp_verified',
+        vote_count: 0,
+        voter_user_ids: [],
+      },
+    ],
+    votes: {
+      'a0000000-0000-0000-0000-000000000001': {
+        id: 'v-aarav-1',
+        session_id: 'vote-cse-lunch-today',
+        option_id: 'opt-cse-1',
+        user_id: 'a0000000-0000-0000-0000-000000000001',
+        user_name: 'Aarav Sharma',
+        user_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        voted_at: new Date(Date.now() - 5 * 60000).toISOString(),
+      },
+      'a0000000-0000-0000-0000-000000000002': {
+        id: 'v-ananya-1',
+        session_id: 'vote-cse-lunch-today',
+        option_id: 'opt-cse-2',
+        user_id: 'a0000000-0000-0000-0000-000000000002',
+        user_name: 'Ananya Iyer',
+        user_avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+        voted_at: new Date(Date.now() - 3 * 60000).toISOString(),
+      },
+    },
+    ai_summary: 'Decision Room active: 2 of 4 votes recorded. South Indian Express leads on tie-break with 95% group compatibility.',
+    created_at: new Date(Date.now() - 10 * 60000).toISOString(),
+    updated_at: new Date(Date.now() - 3 * 60000).toISOString(),
   },
 ];

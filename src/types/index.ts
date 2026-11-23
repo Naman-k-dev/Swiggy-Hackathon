@@ -5,6 +5,8 @@ export type SessionStatus = 'open' | 'locked' | 'finalized' | 'cancelled';
 export type OrderStatus = 'placed' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered';
 
 export * from './circlematch';
+export * from './circlevote';
+export * from './order-rescue';
 
 export interface StudentProfile {
   id: string;

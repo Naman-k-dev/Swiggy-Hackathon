@@ -99,7 +99,15 @@ export type AnalyticsEventType =
   | 'cart_finalized_after_ai'
   | 'order_finalized'
   | 'swiggy_cart_synced'
-  | 'circlematch_abandoned';
+  | 'circlematch_abandoned'
+  | 'circlevote_started'
+  | 'circlevote_cast'
+  | 'circlevote_completed'
+  | 'circlevote_restaurant_selected'
+  | 'order_rescue_triggered'
+  | 'order_rescue_recommendation_shown'
+  | 'order_rescue_accepted'
+  | 'order_rescue_declined';
 
 export type EventSource = 'live_campus_pilot' | 'seeded_baseline';
 

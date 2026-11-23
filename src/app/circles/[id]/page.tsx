@@ -19,6 +19,8 @@ import {
   Utensils,
   RotateCcw,
   Calendar,
+  Vote,
+  LifeBuoy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +30,8 @@ import { OrderReadinessDashboard } from '@/components/circles/OrderReadinessDash
 import { ReorderModal } from '@/components/circles/ReorderModal';
 import { SwiggyCartSyncModal } from '@/components/circles/SwiggyCartSyncModal';
 import { MealWindowSchedulerModal } from '@/components/circles/MealWindowSchedulerModal';
+import { CircleVoteModal } from '@/components/circlevote/CircleVoteModal';
+import { OrderRescueModal } from '@/components/rescue/OrderRescueModal';
 import { formatPaise, formatRupees, calculateMemberSplit } from '@/lib/utils';
 import { DemoOrder } from '@/types';
 import confetti from 'canvas-confetti';
@@ -54,6 +58,16 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
     updateCartQuantity,
     demoOrders,
     getMealWindows,
+    voteSessions,
+    getActiveVoteSession,
+    castCircleVote,
+    finalizeCircleVote,
+    applyVoteWinnerToSession,
+    activeRescueIssue,
+    triggerOrderRescue,
+    acceptRescueReplacement,
+    dismissRescueIssue,
+    getJudgeDemoScenarios,
   } = useApp();
 
   const circle = getCircle(circleId);
@@ -61,6 +75,12 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
   const isAdmin = isCircleAdmin(circleId);
   const activeSession = getSession(circleId);
   const mealWindows = getMealWindows(circleId);
+
+  // Active Vote Session (Phase 6: CircleVote)
+  const activeVoteSession =
+    getActiveVoteSession(circleId) ||
+    voteSessions.find((s) => s.circle_id === circleId) ||
+    null;
 
   // Past orders for this circle
   const circleOrders = useMemo(() => {
@@ -73,6 +93,8 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
   const [circleMatchOpen, setCircleMatchOpen] = useState(false);
   const [swiggyCartSyncOpen, setSwiggyCartSyncOpen] = useState(false);
   const [schedulerModalOpen, setSchedulerModalOpen] = useState(false);
+  const [voteModalOpen, setVoteModalOpen] = useState(false);
+  const [rescueModalOpen, setRescueModalOpen] = useState(false);
   const [reorderModalOrder, setReorderModalOrder] = useState<DemoOrder | null>(null);
   const [deliveryLocation, setDeliveryLocation] = useState(
     activeSession?.delivery_location || 'Hostel Block C - Ground Floor Reception'
@@ -227,6 +249,48 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
             <Button
               variant="outline"
               size="md"
+              onClick={() => setVoteModalOpen(true)}
+              className={`rounded-2xl gap-2 text-xs font-bold ${
+                activeVoteSession?.status === 'active'
+                  ? 'border-swiggy-orange bg-orange-50/70 text-swiggy-dark font-black ring-1 ring-orange-300'
+                  : ''
+              }`}
+            >
+              <Vote className="w-4 h-4 text-swiggy-orange" />
+              <span>Decision Room 🗳️</span>
+              {activeVoteSession?.status === 'active' && (
+                <span className="w-2 h-2 rounded-full bg-swiggy-orange animate-ping" />
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => {
+                if (!activeRescueIssue) {
+                  const scenarios = getJudgeDemoScenarios(circleId);
+                  triggerOrderRescue(
+                    scenarios.dietary_conflict.scenario,
+                    {
+                      id: scenarios.dietary_conflict.original_dish_id,
+                      name: scenarios.dietary_conflict.original_dish_name,
+                      price_paise: scenarios.dietary_conflict.original_price_paise,
+                    },
+                    scenarios.dietary_conflict.reason,
+                    true
+                  );
+                }
+                setRescueModalOpen(true);
+              }}
+              className="rounded-2xl gap-2 text-xs font-bold border-amber-300 bg-amber-50/50 hover:bg-amber-100/60 text-amber-900"
+            >
+              <LifeBuoy className="w-4 h-4 text-swiggy-orange" />
+              <span>Order Rescue AI 🛟</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="md"
               onClick={() => setInviteModalOpen(true)}
               className="rounded-2xl gap-2 text-xs font-bold"
             >
@@ -245,6 +309,43 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
           </div>
         </div>
       </div>
+
+      {/* Active Order Rescue Notification Banner */}
+      {activeRescueIssue && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-red-50 via-amber-50 to-orange-50 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2.5 text-xs text-charcoal-800">
+            <span className="w-8 h-8 rounded-xl bg-swiggy-orange text-white flex items-center justify-center font-black shrink-0">
+              <LifeBuoy className="w-4 h-4" />
+            </span>
+            <div>
+              <p className="font-black text-charcoal-900">
+                Order Rescue Needed for {activeRescueIssue.user_name}
+              </p>
+              <p className="text-[11px] text-charcoal-600 line-clamp-1">
+                {activeRescueIssue.reason}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setRescueModalOpen(true)}
+              className="font-bold text-xs rounded-xl bg-swiggy-orange hover:bg-orange-600"
+            >
+              Review Alternatives 🛟
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => dismissRescueIssue(activeRescueIssue.id)}
+              className="text-xs rounded-xl text-charcoal-500 hover:text-charcoal-800"
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* 2. Main Content Grid: 8 Cols (Active Order & Cart) + 4 Cols (Members Panel) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -905,6 +1006,66 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
         isOpen={schedulerModalOpen}
         onClose={() => setSchedulerModalOpen(false)}
         circleId={circleId}
+      />
+
+      {/* 10. CircleVote — The Decision Room (Phase 6 Feature 1) */}
+      <CircleVoteModal
+        isOpen={voteModalOpen}
+        onClose={() => setVoteModalOpen(false)}
+        session={activeVoteSession}
+        currentUser={currentUser}
+        isAdmin={isAdmin}
+        onCastVote={(optionId) => {
+          if (activeVoteSession) {
+            castCircleVote(activeVoteSession.id, optionId);
+          }
+        }}
+        onFinalizeVote={(sessionId) => {
+          const finalized = finalizeCircleVote(sessionId);
+          if (finalized.winning_restaurant_id) {
+            applyVoteWinnerToSession(activeSession?.id || '', finalized.id);
+          }
+        }}
+        onSelectWinningRestaurant={(restId) => {
+          if (activeVoteSession) {
+            applyVoteWinnerToSession(activeSession?.id || '', activeVoteSession.id);
+          }
+          router.push(`/circles/${circleId}/restaurants/${restId}`);
+        }}
+      />
+
+      {/* 11. Order Rescue AI Modal (Phase 6 Feature 2) */}
+      <OrderRescueModal
+        isOpen={rescueModalOpen}
+        onClose={() => setRescueModalOpen(false)}
+        issue={activeRescueIssue}
+        currentUser={currentUser}
+        isAdmin={isAdmin}
+        onAcceptReplacement={(issue, alternative) => {
+          acceptRescueReplacement(issue, alternative);
+          setRescueModalOpen(false);
+          confetti({ particleCount: 60, spread: 60 });
+        }}
+        onDismiss={(issueId) => {
+          dismissRescueIssue(issueId);
+          setRescueModalOpen(false);
+        }}
+        onTriggerDemoScenario={(scenarioKey) => {
+          const scenarios = getJudgeDemoScenarios(circleId);
+          const chosen = scenarios[scenarioKey];
+          if (chosen) {
+            triggerOrderRescue(
+              chosen.scenario,
+              {
+                id: chosen.original_dish_id,
+                name: chosen.original_dish_name,
+                price_paise: chosen.original_price_paise,
+              },
+              chosen.reason,
+              true
+            );
+          }
+        }}
       />
     </div>
   );
