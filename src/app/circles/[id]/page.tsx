@@ -9,9 +9,6 @@ import {
   Users,
   Plus,
   Minus,
-  Lock,
-  Unlock,
-  Clock,
   Sparkles,
   Share2,
   Check,
@@ -20,12 +17,16 @@ import {
   TrendingDown,
   ShoppingBag,
   Utensils,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import { CircleMatchModal } from '@/components/circlematch/CircleMatchModal';
+import { OrderReadinessDashboard } from '@/components/circles/OrderReadinessDashboard';
+import { ReorderModal } from '@/components/circles/ReorderModal';
 import { formatPaise, formatRupees, calculateMemberSplit } from '@/lib/utils';
+import { DemoOrder } from '@/types';
 import confetti from 'canvas-confetti';
 
 interface CirclePageProps {
@@ -45,11 +46,10 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
     isCircleAdmin,
     currentUser,
     getSession,
-    lockSession,
-    reopenSession,
     finalizeSession,
     getSessionCartItems,
     updateCartQuantity,
+    demoOrders,
   } = useApp();
 
   const circle = getCircle(circleId);
@@ -57,10 +57,16 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
   const isAdmin = isCircleAdmin(circleId);
   const activeSession = getSession(circleId);
 
+  // Past orders for this circle
+  const circleOrders = useMemo(() => {
+    return demoOrders.filter((o) => o.circle_id === circleId);
+  }, [demoOrders, circleId]);
+
   // Modal States
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
   const [circleMatchOpen, setCircleMatchOpen] = useState(false);
+  const [reorderModalOrder, setReorderModalOrder] = useState<DemoOrder | null>(null);
   const [deliveryLocation, setDeliveryLocation] = useState(
     activeSession?.delivery_location || 'Hostel Block C - Ground Floor Reception'
   );
@@ -237,118 +243,17 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column (8 cols): Ordering Session & Shared Cart */}
         <div className="lg:col-span-8 space-y-6">
-          {/* Active Ordering Session Card */}
+          {/* Active Ordering Session Card (Feature A, D & E) */}
           {activeSession ? (
-            <div className="rounded-3xl bg-white border border-charcoal-100 p-6 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-charcoal-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl overflow-hidden relative bg-charcoal-100 flex-shrink-0">
-                    {activeSession.restaurant_image ? (
-                      <Image
-                        src={activeSession.restaurant_image}
-                        alt={activeSession.restaurant_name}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xl">
-                        🍽️
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal-500">
-                        Active Restaurant
-                      </span>
-                      {activeSession.status === 'open' ? (
-                        <Badge variant="success" size="sm" className="font-bold gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          Order Open
-                        </Badge>
-                      ) : (
-                        <Badge variant="warning" size="sm" className="font-bold gap-1">
-                          <Lock className="w-3 h-3" />
-                          Cart Locked
-                        </Badge>
-                      )}
-                    </div>
-                    <h3 className="text-lg font-black text-charcoal-900 leading-tight">
-                      {activeSession.restaurant_name}
-                    </h3>
-                  </div>
-                </div>
-
-                {/* Countdown & Drop point */}
-                <div className="flex sm:flex-col items-center sm:items-end justify-between text-xs">
-                  <div className="flex items-center gap-1.5 font-bold text-swiggy-orange bg-swiggy-light px-2.5 py-1 rounded-xl">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Cutoff: {timeLeftStr}</span>
-                  </div>
-                  <span className="text-[11px] text-charcoal-400 mt-1">
-                    Drop: {activeSession.delivery_location}
-                  </span>
-                </div>
-              </div>
-
-              {/* Session Controls for Members and Admins */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                <Link
-                  href={`/circles/${circleId}/restaurants/${activeSession.restaurant_id}`}
-                >
-                  <Button
-                    size="sm"
-                    variant={activeSession.status === 'open' ? 'primary' : 'outline'}
-                    disabled={activeSession.status !== 'open'}
-                    className="rounded-xl text-xs font-bold gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Browse Menu & Add Food</span>
-                  </Button>
-                </Link>
-
-                {isAdmin && (
-                  <div className="flex items-center gap-2">
-                    {activeSession.status === 'open' ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => lockSession(activeSession.id)}
-                        className="rounded-xl text-xs font-bold gap-1.5 border-charcoal-300"
-                        title="Lock cart so no more items can be added"
-                      >
-                        <Lock className="w-3.5 h-3.5 text-charcoal-600" />
-                        <span>Lock Cart</span>
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => reopenSession(activeSession.id)}
-                        className="rounded-xl text-xs font-bold gap-1.5 border-emerald-300 text-emerald-700 bg-emerald-50"
-                        title="Reopen cart for additions"
-                      >
-                        <Unlock className="w-3.5 h-3.5" />
-                        <span>Reopen Cart</span>
-                      </Button>
-                    )}
-
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setFinalizeModalOpen(true)}
-                      disabled={cartItems.length === 0}
-                      className="rounded-xl text-xs font-bold gap-1.5 bg-charcoal-900 text-white"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-swiggy-orange" />
-                      <span>Finalize & Place Demo Order</span>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
+            <OrderReadinessDashboard
+              session={activeSession}
+              circleId={circleId}
+              members={members}
+              isAdmin={isAdmin}
+              timeLeftStr={timeLeftStr}
+              subtotalPaise={subtotalPaise}
+              onOpenFinalizeModal={() => setFinalizeModalOpen(true)}
+            />
           ) : (
             <div className="rounded-3xl bg-white border border-charcoal-100 p-8 text-center space-y-4">
               <div className="w-14 h-14 rounded-2xl bg-orange-50 text-swiggy-orange flex items-center justify-center mx-auto text-2xl">
@@ -362,12 +267,25 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                   Ready for lunch, dinner, or midnight bites? Launch a group session with your circle.
                 </p>
               </div>
-              <Link href={`/circles/${circleId}/restaurants`}>
-                <Button size="md" className="rounded-2xl font-bold text-xs gap-2">
-                  <Utensils className="w-4 h-4" />
-                  <span>Choose Restaurant & Start Session</span>
-                </Button>
-              </Link>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Link href={`/circles/${circleId}/restaurants`}>
+                  <Button size="md" className="rounded-2xl font-bold text-xs gap-2 shadow-highlight">
+                    <Utensils className="w-4 h-4" />
+                    <span>Choose Restaurant & Start Session</span>
+                  </Button>
+                </Link>
+                {circleOrders.length > 0 && (
+                  <Button
+                    size="md"
+                    variant="outline"
+                    onClick={() => setReorderModalOrder(circleOrders[0])}
+                    className="rounded-2xl font-bold text-xs gap-1.5 border-charcoal-200"
+                  >
+                    <RotateCcw className="w-4 h-4 text-swiggy-orange" />
+                    <span>Reorder Past Meal</span>
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 
@@ -440,6 +358,10 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                     (s, i) => s + i.item_price_paise * i.quantity,
                     0
                   );
+                  const memberProfile = members.find((m) => m.user_id === userId)?.profile;
+                  const memberBudgetPaise = (memberProfile?.preferred_budget || circle.preferred_budget || 200) * 100;
+                  const remainingBudgetPaise = memberBudgetPaise - memberSubtotal;
+                  const isOverBudget = remainingBudgetPaise < 0;
 
                   return (
                     <div
@@ -450,8 +372,8 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                           : 'border-charcoal-100 bg-[#FAFAF8]'
                       }`}
                     >
-                      {/* Member Header */}
-                      <div className="flex items-center justify-between pb-3 border-b border-charcoal-100/80 mb-3">
+                      {/* Member Header & Smart Budget Guardrails */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-charcoal-100/80 mb-3 gap-2">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full overflow-hidden relative border border-white shadow-xs">
                             <Image
@@ -473,14 +395,25 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                               )}
                             </p>
                             <p className="text-[10px] text-charcoal-500">
-                              {userItems.reduce((s, i) => s + i.quantity, 0)} items
+                              {userItems.reduce((s, i) => s + i.quantity, 0)} items • Budget: {formatPaise(memberBudgetPaise)}
                             </p>
                           </div>
                         </div>
 
-                        <span className="font-black text-xs text-charcoal-900">
-                          {formatPaise(memberSubtotal)}
-                        </span>
+                        <div className="flex items-center gap-2 self-end sm:self-center">
+                          {isOverBudget ? (
+                            <span className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full animate-pulse">
+                              ⚠️ Exceeded by {formatPaise(Math.abs(remainingBudgetPaise))}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                              ✓ {formatPaise(remainingBudgetPaise)} left
+                            </span>
+                          )}
+                          <span className="font-black text-xs text-charcoal-900">
+                            {formatPaise(memberSubtotal)}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Dishes List */}
@@ -713,6 +646,47 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
               </Button>
             </div>
           </div>
+
+          {/* Past Circle Orders & One-Click Reorder (Feature C) */}
+          {circleOrders.length > 0 && (
+            <div className="rounded-3xl bg-white border border-charcoal-100 p-6 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h3 className="font-extrabold text-sm text-charcoal-900 flex items-center gap-1.5">
+                  <RotateCcw className="w-4 h-4 text-swiggy-orange" />
+                  Past Circle Orders
+                </h3>
+                <span className="text-[11px] text-charcoal-400">
+                  {circleOrders.length} order{circleOrders.length > 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {circleOrders.slice(0, 3).map((o) => (
+                  <div
+                    key={o.id}
+                    className="p-3 rounded-2xl bg-charcoal-50 border border-charcoal-100 space-y-2"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-charcoal-900">{o.restaurant_name}</span>
+                      <span className="font-black text-charcoal-800">{formatPaise(o.total_paise)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-charcoal-500">
+                      <span>{o.order_code} • {o.total_items_count} items</span>
+                      <Button
+                        size="sm"
+                        variant="soft"
+                        onClick={() => setReorderModalOrder(o)}
+                        className="text-[10px] py-1 px-2.5 font-bold rounded-lg gap-1"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        Reorder
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -828,6 +802,16 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
         onClose={() => setCircleMatchOpen(false)}
         circleId={circleId}
       />
+
+      {/* 7. One-Click Squad Reorder Modal (Feature C) */}
+      {reorderModalOrder && (
+        <ReorderModal
+          isOpen={Boolean(reorderModalOrder)}
+          onClose={() => setReorderModalOrder(null)}
+          order={reorderModalOrder}
+          circleId={circleId}
+        />
+      )}
     </div>
   );
 }

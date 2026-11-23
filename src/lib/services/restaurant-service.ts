@@ -1,14 +1,16 @@
 import { Restaurant } from '@/types';
 import { DEMO_RESTAURANTS } from '@/lib/data/mock-restaurants';
+import { swiggyMCPService } from '@/lib/services/swiggy-mcp-service';
 
 /**
  * Interface for restaurant data access.
- * This abstraction enables swapping mock data with live Swiggy APIs/MCP servers in Phase 2.
+ * Enables transparent switching between campus verified catalog and Swiggy Food MCP.
  */
 export interface IRestaurantProvider {
   getRestaurants(): Promise<Restaurant[]>;
   getRestaurantById(id: string): Promise<Restaurant | null>;
   searchRestaurants(query: string): Promise<Restaurant[]>;
+  getProviderStatus(): { isLive: boolean; providerName: string };
 }
 
 export class DemoRestaurantProvider implements IRestaurantProvider {
@@ -22,16 +24,18 @@ export class DemoRestaurantProvider implements IRestaurantProvider {
   }
 
   async searchRestaurants(query: string): Promise<Restaurant[]> {
-    const q = query.toLowerCase();
-    return DEMO_RESTAURANTS.filter(
-      (r) =>
-        r.name.toLowerCase().includes(q) ||
-        r.cuisine.some((c) => c.toLowerCase().includes(q)) ||
-        r.menu_categories.some((cat) =>
-          cat.items.some((i) => i.name.toLowerCase().includes(q))
-        )
-    );
+    const { restaurants } = await swiggyMCPService.searchRestaurants(query);
+    return restaurants;
+  }
+
+  getProviderStatus(): { isLive: boolean; providerName: string } {
+    const status = swiggyMCPService.getStatus();
+    return {
+      isLive: status.isConnected,
+      providerName: status.isConnected ? 'Swiggy Food MCP (Live)' : 'Campus Verified Demo Menus',
+    };
   }
 }
 
 export const restaurantService = new DemoRestaurantProvider();
+export { swiggyMCPService };

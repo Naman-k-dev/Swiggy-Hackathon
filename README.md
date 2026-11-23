@@ -20,6 +20,8 @@ Unlike ephemeral one-time cart links, **Campus Circles** introduces **persistent
 
 With **Phase 2**, we introduce **CircleMatch AI**: an intelligent group meal matching and constraint-optimization engine that eliminates mealtime decision paralysis in seconds.
 
+With **Phase 3**, we upgrade to a **Production-Grade Campus Food Platform**: verified Gemini API credential integration, Swiggy Food MCP client architecture, Member Ready Status, Smart Budget Guardrails in integer paise, One-Click Squad Reorder, Group Order Readiness Dashboard, Campus Pickup Notes, and a premium color palette.
+
 ---
 
 ## 🚀 Key Features
@@ -107,6 +109,42 @@ CircleMatch AI eliminates group dining deadlock through a deterministic constrai
   1. 🌟 **Best Overall Match:** Maximizes group fairness and overall craving alignment.
   2. 💰 **Most Budget-Friendly:** Minimizes total paise spend while keeping all members satisfied.
   3. 👑 **Most Crowd-Pleasing:** Prioritizes top campus bestsellers and universally loved dishes.
+
+---
+
+### Phase 3: API Integration + Bug Fixes + Premium UI/UX + High-Value Features
+
+#### 1. Verified API Integrations
+- **Google Gemini 1.5 Flash Service Client (`src/lib/services/gemini-service.ts`):**
+  - Server-side integration with Google's updated `AQ.` credential format.
+  - Robust error handling: 429 rate limiting, expired credential detection, 4.5s timeout via AbortSignal, and automatic fallback to grounded deterministic explainers.
+  - Zero client-side key leakage (configured via server-only `.env.local`).
+- **Swiggy Food MCP Architecture (`src/lib/services/swiggy-mcp-service.ts`):**
+  - Follows official Swiggy Builders Club specifications with OAuth 2.1 PKCE (RFC 7636).
+  - Standardized Food MCP tool schemas (`swiggy_food_search_restaurants`, `swiggy_food_get_menu`, `swiggy_food_check_item_availability`).
+  - Clear provider status indicator: distinguishes live Swiggy MCP from campus verified demo catalog with zero fabricated live badges.
+
+#### 2. High-Value Features Added
+- **Feature A: Member Ready Status (`OrderReadinessDashboard.tsx`):**
+  - Members toggle *"I'm Ready ✨"* / *"Still Choosing"* with 1 click.
+  - Dynamic squad readiness progress bar (e.g. `3 of 4 Ready (75%)`).
+  - Admin receives a confirmation warning if attempting to lock while members are still selecting.
+- **Feature B: Smart Budget Guardrails (`formatPaise`):**
+  - Real-time personal spending and remaining budget trackers displayed in integer paise throughout the ordering flow.
+  - Visual overrun warnings (`⚠️ Exceeded budget by ₹35!`) on cards and menu toasts.
+- **Feature C: One-Click Squad Reorder (`ReorderModal.tsx`):**
+  - Instant 1-click reorder from past orders with a selective item confirmation modal.
+  - Preserves exact individual student ownership of dishes when populating the new session.
+- **Feature D: Group Order Readiness Dashboard (`OrderReadinessDashboard.tsx`):**
+  - Unified live command center displaying restaurant, live countdown, subtotal, drop point, and readiness stats.
+- **Feature E: Campus Pickup Notes:**
+  - Dropdown & custom campus coordinates (Hostel Gate, Campus Main Gate, Academic Quadrangle).
+
+#### 3. Bug Fixes & Refinements
+- **Avatar 404s Eliminated:** Fixed broken `/avatars/persona-*.jpg` paths in landing hero with high-res responsive avatars.
+- **Member-Specific AI Cart Attribution:** Fixed `addToCart` to accept `targetUserId`, ensuring CircleMatch AI accurately attributes dishes to each individual student rather than the active session admin.
+- **Hydration Flash Eliminated:** Replaced blank screen state with a branded campus loading skeleton during client store hydration.
+- **Premium Semantic Color Tokens:** Added theme tokens for Primary Orange (`#FC8019`), Primary Hover (`#E86F0A`), Deep Charcoal (`#171717`), Warm Background (`#FAFAF8`), Card Background (`#FFFFFF`), Muted Surface (`#FFF5EE`), Success Green (`#16834A`), and Error Red (`#DC2626`).
 
 #### 2. Interactive 5-Step User Journey (`CircleMatchModal.tsx`)
 - **Step 1: Preference Gathering & Overrides:**

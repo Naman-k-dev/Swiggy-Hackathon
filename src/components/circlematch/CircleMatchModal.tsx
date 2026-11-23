@@ -258,7 +258,8 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
             price_paise: plan.recommendedDish.pricePaise,
             is_veg: plan.recommendedDish.isVeg,
           },
-          'Matched by CircleMatch AI'
+          'Matched by CircleMatch AI',
+          plan.userId
         );
         itemsAddedCount++;
       }

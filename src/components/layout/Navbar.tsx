@@ -207,6 +207,13 @@ export function Navbar() {
               Dashboard & Circles
             </Link>
             <Link
+              href="/circles/circle-cse-lunch-squad"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2.5 text-sm font-semibold text-swiggy-orange hover:bg-orange-50 rounded-xl flex items-center gap-2"
+            >
+              <span>✨ CircleMatch AI (Meal Matching)</span>
+            </Link>
+            <Link
               href="/circles/create"
               onClick={() => setMobileMenuOpen(false)}
               className="block px-3 py-2.5 text-sm font-medium text-swiggy-orange hover:bg-swiggy-light rounded-xl font-semibold"

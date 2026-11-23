@@ -54,6 +54,8 @@ export interface OrderingSession {
   status: SessionStatus;
   cutoff_time?: string;
   delivery_location: string;
+  pickup_note?: string;
+  ready_member_ids?: string[];
   created_at: string;
   updated_at?: string;
 }

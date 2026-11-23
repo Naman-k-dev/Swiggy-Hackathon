@@ -114,10 +114,14 @@ export function HeroSection() {
                   </div>
                 </div>
                 <div className="flex -space-x-2">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-charcoal-100 overflow-hidden shadow-sm ring-1 ring-black/5">
+                  {[
+                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+                    'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+                    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+                  ].map((avatarUrl, idx) => (
+                    <div key={idx} className="w-8 h-8 rounded-full border-2 border-white bg-charcoal-100 overflow-hidden shadow-sm ring-1 ring-black/5">
                       <Image
-                        src={`/avatars/persona-${i}.jpg`}
+                        src={avatarUrl}
                         alt="Member"
                         width={32}
                         height={32}

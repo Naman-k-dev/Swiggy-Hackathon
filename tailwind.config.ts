@@ -11,9 +11,13 @@ export default {
       colors: {
         background: "#FAFAF8",
         foreground: "#171717",
+        surface: {
+          DEFAULT: "#FFFFFF",
+          muted: "#FFF5EE",
+        },
         swiggy: {
           orange: "#FC8019",
-          hover: "#E57315",
+          hover: "#E86F0A",
           light: "#FFF5EE",
           soft: "#FFEAD9",
           dark: "#C45D0B",
@@ -32,9 +36,9 @@ export default {
           900: "#171717",
         },
         veg: {
-          DEFAULT: "#00A343",
+          DEFAULT: "#16834A",
           light: "#E8F8EE",
-          dark: "#057A33",
+          dark: "#0F6136",
         },
         nonveg: {
           DEFAULT: "#DC2626",

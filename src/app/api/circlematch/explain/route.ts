@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { geminiService } from '@/lib/services/gemini-service';
 
 const RequestSchema = z.object({
   restaurantName: z.string(),
@@ -33,64 +34,23 @@ export async function POST(req: NextRequest) {
     const { restaurantName, planType, groupSatisfactionScore, totalRupees, memberPlans } =
       parsed.data;
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    // 1. Attempt Gemini 1.5 Flash via dedicated service client
+    const geminiResult = await geminiService.generateGroupExplanation({
+      restaurantName,
+      planType,
+      groupSatisfactionScore,
+      totalRupees,
+      memberPlans,
+    });
 
-    // If Gemini API Key is available, invoke server-side Gemini API
-    if (apiKey) {
-      try {
-        const prompt = `You are CircleMatch AI, an intelligent dining assistant for Indian college students.
-Explain why "${restaurantName}" was selected for this group in 2-3 friendly, student-focused sentences.
-Context:
-- Plan Category: ${planType}
-- Group Satisfaction: ${groupSatisfactionScore}%
-- Total Cost: ₹${totalRupees}
-- Member Choices:
-${memberPlans
-  .map(
-    (m) =>
-      `  * ${m.userName} (${m.dietaryPref}, Budget ₹${m.budgetRupees}): Recommended "${m.dishName}" at ₹${m.dishPriceRupees} (${m.matchReason})`
-  )
-  .join('\n')}
-
-Rules:
-1. Mention individual students by name, confirming their dietary restrictions (especially vegetarians) and budgets were strictly respected.
-2. Emphasize why this restaurant balances everyone's cravings without budget overruns.
-3. Keep it under 65 words. Do not invent any new dishes or prices.`;
-
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: {
-                maxOutputTokens: 120,
-                temperature: 0.3,
-              },
-            }),
-            signal: AbortSignal.timeout(4000), // 4 second hard timeout
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          const generatedText =
-            data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-
-          if (generatedText) {
-            return NextResponse.json({
-              explanation: generatedText,
-              provider: 'gemini',
-            });
-          }
-        }
-      } catch {
-        // Fall through to deterministic generator on timeout or API error
-      }
+    if (geminiResult.success && geminiResult.explanation) {
+      return NextResponse.json({
+        explanation: geminiResult.explanation,
+        provider: 'gemini',
+      });
     }
 
-    // Graceful, Grounded Deterministic Fallback
+    // 2. Grounded, Deterministic Fallback Engine
     const vegStudents = memberPlans.filter((m) => m.dietaryPref === 'VEG');
     const vegText =
       vegStudents.length > 0
@@ -109,6 +69,7 @@ Rules:
     return NextResponse.json({
       explanation: fallbackText,
       provider: 'deterministic',
+      diagnostics: geminiResult.error ? { geminiError: geminiResult.error, code: geminiResult.errorCode } : undefined,
     });
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : 'Unknown error';

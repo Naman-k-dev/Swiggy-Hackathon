@@ -72,7 +72,8 @@ interface AppContextType {
       price_paise: number;
       is_veg: boolean;
     },
-    customization?: string
+    customization?: string,
+    targetUserId?: string
   ) => void;
   updateCartQuantity: (cartItemId: string, delta: number) => void;
   removeFromCart: (cartItemId: string) => void;
@@ -85,6 +86,14 @@ interface AppContextType {
   // Restaurants
   restaurants: Restaurant[];
   getRestaurant: (id: string) => Restaurant | undefined;
+
+  // Phase 3 High-Value Features & Budget Guardrails
+  isLoaded: boolean;
+  toggleMemberReady: (sessionId: string, userId?: string) => void;
+  updatePickupNote: (sessionId: string, pickupNote: string) => void;
+  startReorderSession: (orderId: string) => { session: OrderingSession; previousItems: CartItem[] };
+  getMemberCartTotalPaise: (sessionId: string, userId: string) => number;
+  getMemberRemainingBudgetPaise: (sessionId: string, userId: string, circleId: string) => number;
 
   // Reset & Status
   isRealtimeConnected: boolean;
@@ -482,6 +491,113 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [sessions, currentUser, circles, members, persistState, broadcastUpdate]
   );
 
+  // Feature A: Member Ready Status
+  const toggleMemberReady = useCallback(
+    (sessionId: string, userId = currentUser.id) => {
+      setSessions((prev) => {
+        const updated = prev.map((s) => {
+          if (s.id !== sessionId) return s;
+          const currentReady = s.ready_member_ids || [];
+          const isReady = currentReady.includes(userId);
+          const nextReady = isReady
+            ? currentReady.filter((id) => id !== userId)
+            : [...currentReady, userId];
+          return { ...s, ready_member_ids: nextReady, updated_at: new Date().toISOString() };
+        });
+        persistState(currentUser, circles, members, updated);
+        broadcastUpdate({ sessions: updated });
+        return updated;
+      });
+    },
+    [currentUser, circles, members, persistState, broadcastUpdate]
+  );
+
+  // Feature E: Campus Pickup Notes
+  const updatePickupNote = useCallback(
+    (sessionId: string, pickupNote: string) => {
+      setSessions((prev) => {
+        const updated = prev.map((s) => {
+          if (s.id !== sessionId) return s;
+          return { ...s, pickup_note: pickupNote, updated_at: new Date().toISOString() };
+        });
+        persistState(currentUser, circles, members, updated);
+        broadcastUpdate({ sessions: updated });
+        return updated;
+      });
+    },
+    [currentUser, circles, members, persistState, broadcastUpdate]
+  );
+
+  // Feature C: One-Click Reorder
+  const startReorderSession = useCallback(
+    (orderId: string) => {
+      const order = demoOrders.find((o) => o.id === orderId || o.order_code === orderId);
+      if (!order) throw new Error('Order not found');
+
+      const rest = DEMO_RESTAURANTS.find((r) => r.id === order.restaurant_id);
+      const restaurantName = rest ? rest.name : order.restaurant_name;
+      const restaurantImage = rest ? rest.image : '';
+
+      const newSession: OrderingSession = {
+        id: `sess-${Date.now()}`,
+        circle_id: order.circle_id,
+        created_by: currentUser.id,
+        restaurant_id: order.restaurant_id,
+        restaurant_name: restaurantName,
+        restaurant_image: restaurantImage,
+        status: 'open',
+        cutoff_time: new Date(Date.now() + 30 * 60000).toISOString(),
+        delivery_location: order.delivery_location || 'Hostel Main Gate / Common Reception',
+        pickup_note: order.delivery_instructions,
+        ready_member_ids: [],
+        created_at: new Date().toISOString(),
+      };
+
+      const updatedSessions = sessions
+        .map((s) => (s.circle_id === order.circle_id && s.status === 'open' ? { ...s, status: 'cancelled' as const } : s))
+        .concat(newSession);
+
+      setSessions(updatedSessions);
+      persistState(currentUser, circles, members, updatedSessions);
+      broadcastUpdate({ sessions: updatedSessions });
+
+      const previousItems: CartItem[] = [];
+      order.member_breakdowns.forEach((mb) => {
+        mb.items.forEach((item) => {
+          previousItems.push({
+            ...item,
+            id: `reorder-${item.item_id}-${mb.user_id}-${Date.now()}`,
+            session_id: newSession.id,
+          });
+        });
+      });
+
+      return { session: newSession, previousItems };
+    },
+    [demoOrders, currentUser, sessions, circles, members, persistState, broadcastUpdate]
+  );
+
+  // Feature B: Smart Budget Guardrails calculations in integer paise
+  const getMemberCartTotalPaise = useCallback(
+    (sessionId: string, userId: string) => {
+      return cartItems
+        .filter((ci) => ci.session_id === sessionId && ci.user_id === userId)
+        .reduce((sum, item) => sum + item.item_price_paise * item.quantity, 0);
+    },
+    [cartItems]
+  );
+
+  const getMemberRemainingBudgetPaise = useCallback(
+    (sessionId: string, userId: string, circleId: string) => {
+      const circle = circles.find((c) => c.id === circleId);
+      const user = DEMO_PERSONAS.find((p) => p.id === userId) || currentUser;
+      const budgetPaise = (user.preferred_budget || circle?.preferred_budget || 200) * 100;
+      const spentPaise = getMemberCartTotalPaise(sessionId, userId);
+      return Math.max(0, budgetPaise - spentPaise);
+    },
+    [circles, currentUser, getMemberCartTotalPaise]
+  );
+
   // Cart operations
   const getSessionCartItems = useCallback(
     (sessionId: string) => {
@@ -495,7 +611,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       sessionId: string,
       circleId: string,
       item: { id: string; name: string; price_paise: number; is_veg: boolean },
-      customization?: string
+      customization?: string,
+      targetUserId?: string
     ) => {
       const session = sessions.find((s) => s.id === sessionId);
       if (session && session.status !== 'open') {
@@ -503,12 +620,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      const effectiveUserId = targetUserId || currentUser.id;
+      const targetProfile =
+        DEMO_PERSONAS.find((p) => p.id === effectiveUserId) || currentUser;
+
       setCartItems((prev) => {
         // Check if user already has identical item
         const existingIndex = prev.findIndex(
           (ci) =>
             ci.session_id === sessionId &&
-            ci.user_id === currentUser.id &&
+            ci.user_id === effectiveUserId &&
             ci.item_id === item.id &&
             (ci.customization || '') === (customization || '')
         );
@@ -523,9 +644,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             id: `cart-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
             session_id: sessionId,
             circle_id: circleId,
-            user_id: currentUser.id,
-            user_name: currentUser.full_name,
-            user_avatar: currentUser.avatar_url,
+            user_id: effectiveUserId,
+            user_name: targetProfile.full_name,
+            user_avatar: targetProfile.avatar_url,
             item_id: item.id,
             item_name: item.name,
             item_price_paise: item.price_paise,
@@ -742,6 +863,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       isRealtimeConnected,
       isSupabaseActive: isSupabaseConfigured,
       resetDemoData,
+      isLoaded: mounted,
+      toggleMemberReady,
+      updatePickupNote,
+      startReorderSession,
+      getMemberCartTotalPaise,
+      getMemberRemainingBudgetPaise,
     }),
     [
       currentUser,
@@ -772,11 +899,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       getRestaurant,
       isRealtimeConnected,
       resetDemoData,
+      mounted,
+      toggleMemberReady,
+      updatePickupNote,
+      startReorderSession,
+      getMemberCartTotalPaise,
+      getMemberRemainingBudgetPaise,
     ]
   );
 
   if (!mounted) {
-    return null; // Avoid hydration mismatch on initial local storage read
+    return (
+      <div className="min-h-screen bg-[#FAFAF8] flex flex-col items-center justify-center p-4">
+        <div className="w-14 h-14 rounded-3xl bg-gradient-to-tr from-[#FC8019] to-[#E86F0A] flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-[#FC8019]/20 animate-pulse">
+          🍱
+        </div>
+        <p className="mt-4 text-xs font-black tracking-wider text-[#171717] uppercase">
+          Swiggy Campus Circles
+        </p>
+        <p className="text-[11px] text-[#737373] mt-1 font-medium">
+          Loading campus squad...
+        </p>
+      </div>
+    );
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

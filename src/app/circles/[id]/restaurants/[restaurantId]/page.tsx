@@ -59,6 +59,10 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
     setTimeout(() => setToastMessage(null), 2500);
   };
 
+  const myBudgetPaise = (currentUser.preferred_budget || circle?.preferred_budget || 200) * 100;
+  const remainingPaise = myBudgetPaise - mySubtotalPaise;
+  const isOverBudget = remainingPaise < 0;
+
   const handleAddItem = (dish: {
     id: string;
     name: string;
@@ -67,7 +71,6 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
   }) => {
     let session = activeSession;
     if (!session) {
-      // If no session exists, automatically start one with this restaurant
       session = startSession(circleId, restaurantId, 30);
     } else if (session.restaurant_id !== restaurantId) {
       if (isAdmin) {
@@ -89,7 +92,15 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
     }
 
     addToCart(session.id, circleId, dish);
-    showToast(dish.name);
+    const nextTotal = mySubtotalPaise + dish.price_paise;
+    if (nextTotal > myBudgetPaise) {
+      setToastMessage(
+        `Added "${dish.name}" (⚠️ Exceeds your ₹${Math.round(myBudgetPaise / 100)} budget by ₹${Math.round((nextTotal - myBudgetPaise) / 100)})`
+      );
+      setTimeout(() => setToastMessage(null), 3500);
+    } else {
+      showToast(dish.name);
+    }
   };
 
   if (!restaurant || !circle) {
@@ -293,14 +304,31 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
       {/* Floating Bottom Bar if User has items */}
       {myCartItems.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-charcoal-200 shadow-2xl p-4">
-          <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <div className="max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <p className="text-xs text-charcoal-500 font-semibold">
-                Your Selection ({myCartItems.reduce((s, i) => s + i.quantity, 0)} items)
-              </p>
-              <p className="text-base font-black text-charcoal-900">
-                {formatPaise(mySubtotalPaise)}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-charcoal-500 font-semibold">
+                  Your Selection ({myCartItems.reduce((s, i) => s + i.quantity, 0)} items):
+                </p>
+                <span className="text-sm font-black text-charcoal-900">
+                  {formatPaise(mySubtotalPaise)}
+                </span>
+                <span className="text-xs text-charcoal-300">|</span>
+                <span className="text-xs text-charcoal-500">
+                  Budget: {formatPaise(myBudgetPaise)}
+                </span>
+              </div>
+              <div className="mt-0.5">
+                {isOverBudget ? (
+                  <span className="text-[11px] font-black text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full inline-block">
+                    ⚠️ Exceeded target budget by {formatPaise(Math.abs(remainingPaise))}
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full inline-block">
+                    ✓ Remaining: {formatPaise(remainingPaise)}
+                  </span>
+                )}
+              </div>
             </div>
 
             <Link href={`/circles/${circleId}`}>
