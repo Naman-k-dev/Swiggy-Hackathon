@@ -9,7 +9,14 @@ export const metadata: Metadata = {
   description:
     'Collaborative campus group food ordering prototype for Swiggy Food for Thought 2.0. Create circles, add dishes together, split bills automatically, and eliminate delivery fees.',
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png', sizes: '192x192' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
   },
 };
 
