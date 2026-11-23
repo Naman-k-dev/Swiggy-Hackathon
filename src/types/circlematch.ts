@@ -1,4 +1,4 @@
-import { DietaryPref } from '@/types';
+export type DietaryPref = 'VEG' | 'NON_VEG' | 'BOTH';
 
 export type HungerLevel = 'light' | 'regular' | 'hungry';
 
@@ -83,6 +83,11 @@ export interface CircleMatchSession {
 }
 
 export type AnalyticsEventType =
+  | 'circle_created'
+  | 'member_joined'
+  | 'meal_session_scheduled'
+  | 'member_joined_meal'
+  | 'member_skipped_meal'
   | 'circlematch_started'
   | 'preferences_completed'
   | 'recommendations_generated'
@@ -90,8 +95,21 @@ export type AnalyticsEventType =
   | 'recommendation_accepted'
   | 'dish_replaced'
   | 'cart_added_from_ai'
+  | 'cart_completed'
   | 'cart_finalized_after_ai'
-  | 'circlematch_abandoned';
+  | 'order_finalized'
+  | 'swiggy_cart_synced'
+  | 'circlematch_abandoned'
+  | 'circlevote_started'
+  | 'circlevote_cast'
+  | 'circlevote_completed'
+  | 'circlevote_restaurant_selected'
+  | 'order_rescue_triggered'
+  | 'order_rescue_recommendation_shown'
+  | 'order_rescue_accepted'
+  | 'order_rescue_declined';
+
+export type EventSource = 'live_campus_pilot' | 'seeded_baseline';
 
 export interface AnalyticsEvent {
   id: string;
@@ -99,11 +117,41 @@ export interface AnalyticsEvent {
   circleId: string;
   sessionId?: string;
   userId?: string;
+  source: EventSource; // clearly distinguishes live campus pilot events from seeded baseline
   properties?: Record<string, unknown>;
   timestamp: string;
 }
 
+export interface CampusPilotRecordedSession {
+  sessionId: string;
+  circleId: string;
+  participantCount: number;
+  decisionTimeSeconds: number;
+  recommendationAccepted: boolean;
+  cartCompleted: boolean;
+  estimatedMenuSubtotalPaise: number;
+  repeatParticipationCount: number;
+  source: EventSource;
+  timestamp: string;
+}
+
 export interface BusinessAnalyticsSummary {
+  // Live genuine pilot metrics
+  liveRecordedSessions: number;
+  liveAcceptanceRatePct: number | null;
+  liveCartCompletionRatePct: number | null;
+  liveAvgDecisionTimeSec: number | null;
+  liveAvgOrderValuePaise: number | null;
+  liveRepeatParticipantCount: number;
+
+  // Target pilot research hypotheses & benchmarks
+  targetAcceptanceRatePct: number;
+  targetCartCompletionRatePct: number;
+  targetDecisionTimeSec: number;
+  targetAOVPaise: number;
+
+  // Overall session counters & log
+  totalEventsCount: number;
   totalMatchSessions: number;
   recommendationsGenerated: number;
   recommendationsAccepted: number;

@@ -5,6 +5,8 @@ export type SessionStatus = 'open' | 'locked' | 'finalized' | 'cancelled';
 export type OrderStatus = 'placed' | 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered';
 
 export * from './circlematch';
+export * from './circlevote';
+export * from './order-rescue';
 
 export interface StudentProfile {
   id: string;
@@ -44,6 +46,33 @@ export interface CircleMember {
   profile?: StudentProfile;
 }
 
+export type MealType = 'Lunch' | 'Dinner' | 'Snacks' | 'Custom';
+export type RecurrencePattern = 'none' | 'daily' | 'weekdays' | 'custom_days';
+export type ParticipationStatus = 'joining' | 'skipped' | 'undecided';
+
+export interface MemberParticipation {
+  user_id: string;
+  status: ParticipationStatus;
+  temporary_budget_paise?: number;
+  dietary_override?: DietaryPref;
+  updated_at: string;
+}
+
+export interface RecurringMealWindow {
+  id: string;
+  circle_id: string;
+  meal_type: MealType;
+  title: string;
+  target_time: string; // e.g. "13:15" (1:15 PM IST)
+  cutoff_minutes_before: number; // e.g. 30 min before
+  recurrence: RecurrencePattern;
+  preferred_restaurant_id?: string;
+  preferred_restaurant_name?: string;
+  pickup_point: string;
+  active: boolean;
+  created_at: string;
+}
+
 export interface OrderingSession {
   id: string;
   circle_id: string;
@@ -54,6 +83,13 @@ export interface OrderingSession {
   status: SessionStatus;
   cutoff_time?: string;
   delivery_location: string;
+  pickup_note?: string;
+  ready_member_ids?: string[];
+  meal_type?: MealType;
+  session_name?: string;
+  scheduled_for?: string;
+  recurrence?: RecurrencePattern;
+  participations?: Record<string, MemberParticipation>;
   created_at: string;
   updated_at?: string;
 }
@@ -140,6 +176,8 @@ export interface MenuCategory {
   items: MenuItem[];
 }
 
+export type RestaurantDataSource = 'swiggy_mcp_live' | 'campus_verified_demo' | 'cached';
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -152,5 +190,7 @@ export interface Restaurant {
   price_for_one: number; // in Rupees
   is_pure_veg: boolean;
   offer?: string;
+  source?: RestaurantDataSource;
+  address?: string;
   menu_categories: MenuCategory[];
 }

@@ -20,6 +20,8 @@ Unlike ephemeral one-time cart links, **Campus Circles** introduces **persistent
 
 With **Phase 2**, we introduce **CircleMatch AI**: an intelligent group meal matching and constraint-optimization engine that eliminates mealtime decision paralysis in seconds.
 
+With **Phase 3**, we upgrade to a **Production-Grade Campus Food Platform**: verified Gemini API credential integration, Swiggy Food MCP client architecture, Member Ready Status, Smart Budget Guardrails in integer paise, One-Click Squad Reorder, Group Order Readiness Dashboard, Campus Pickup Notes, and a premium color palette.
+
 ---
 
 ## 🚀 Key Features
@@ -108,6 +110,42 @@ CircleMatch AI eliminates group dining deadlock through a deterministic constrai
   2. 💰 **Most Budget-Friendly:** Minimizes total paise spend while keeping all members satisfied.
   3. 👑 **Most Crowd-Pleasing:** Prioritizes top campus bestsellers and universally loved dishes.
 
+---
+
+### Phase 3: API Integration + Bug Fixes + Premium UI/UX + High-Value Features
+
+#### 1. Verified API Integrations
+- **Google Gemini 1.5 Flash Service Client (`src/lib/services/gemini-service.ts`):**
+  - Server-side integration with Google's updated `AQ.` credential format.
+  - Robust error handling: 429 rate limiting, expired credential detection, 4.5s timeout via AbortSignal, and automatic fallback to grounded deterministic explainers.
+  - Zero client-side key leakage (configured via server-only `.env.local`).
+- **Swiggy Food MCP Architecture (`src/lib/services/swiggy-mcp-service.ts`):**
+  - Follows official Swiggy Builders Club specifications with OAuth 2.1 PKCE (RFC 7636).
+  - Standardized Food MCP tool schemas (`swiggy_food_search_restaurants`, `swiggy_food_get_menu`, `swiggy_food_check_item_availability`).
+  - Clear provider status indicator: distinguishes live Swiggy MCP from campus verified demo catalog with zero fabricated live badges.
+
+#### 2. High-Value Features Added
+- **Feature A: Member Ready Status (`OrderReadinessDashboard.tsx`):**
+  - Members toggle *"I'm Ready ✨"* / *"Still Choosing"* with 1 click.
+  - Dynamic squad readiness progress bar (e.g. `3 of 4 Ready (75%)`).
+  - Admin receives a confirmation warning if attempting to lock while members are still selecting.
+- **Feature B: Smart Budget Guardrails (`formatPaise`):**
+  - Real-time personal spending and remaining budget trackers displayed in integer paise throughout the ordering flow.
+  - Visual overrun warnings (`⚠️ Exceeded budget by ₹35!`) on cards and menu toasts.
+- **Feature C: One-Click Squad Reorder (`ReorderModal.tsx`):**
+  - Instant 1-click reorder from past orders with a selective item confirmation modal.
+  - Preserves exact individual student ownership of dishes when populating the new session.
+- **Feature D: Group Order Readiness Dashboard (`OrderReadinessDashboard.tsx`):**
+  - Unified live command center displaying restaurant, live countdown, subtotal, drop point, and readiness stats.
+- **Feature E: Campus Pickup Notes:**
+  - Dropdown & custom campus coordinates (Hostel Gate, Campus Main Gate, Academic Quadrangle).
+
+#### 3. Bug Fixes & Refinements
+- **Avatar 404s Eliminated:** Fixed broken `/avatars/persona-*.jpg` paths in landing hero with high-res responsive avatars.
+- **Member-Specific AI Cart Attribution:** Fixed `addToCart` to accept `targetUserId`, ensuring CircleMatch AI accurately attributes dishes to each individual student rather than the active session admin.
+- **Hydration Flash Eliminated:** Replaced blank screen state with a branded campus loading skeleton during client store hydration.
+- **Premium Semantic Color Tokens:** Added theme tokens for Primary Orange (`#FC8019`), Primary Hover (`#E86F0A`), Deep Charcoal (`#171717`), Warm Background (`#FAFAF8`), Card Background (`#FFFFFF`), Muted Surface (`#FFF5EE`), Success Green (`#16834A`), and Error Red (`#DC2626`).
+
 #### 2. Interactive 5-Step User Journey (`CircleMatchModal.tsx`)
 - **Step 1: Preference Gathering & Overrides:**
   - Automatically loads profile defaults for all participating circle members.
@@ -134,8 +172,8 @@ CircleMatch AI eliminates group dining deadlock through a deterministic constrai
 - Tracks 9 granular lifecycle events:
   - `circlematch_started`, `preferences_completed`, `recommendations_generated`, `recommendation_viewed`, `dish_replaced`, `member_toggled`, `recommendation_accepted`, `cart_added_from_ai`, `checkout_completed`.
 - **In-App Analytics Modal (`AI Metrics 📊`):**
-  - Displays conversion KPIs: **Recommendation Acceptance Rate (82%)**, **Cart Conversion Rate (75%)**, **Average Order Value (₹598)**, **Decision Time Saved (65%)**.
-  - Live inspection log showing the latest telemetry events with payloads and timestamps.
+  - Displays pilot telemetry and research benchmarks: **Acceptance Consensus (≥70% target)**, **Cart Completion (≥60% target)**, **Group Order Value (₹500 target)**, and **Decision Time (<90s target)**.
+  - Live inspection log showing genuine pilot events vs baseline seed data with RFC 4180 CSV export.
 
 ---
 
@@ -143,7 +181,7 @@ CircleMatch AI eliminates group dining deadlock through a deterministic constrai
 
 | Layer | Technology |
 |---|---|
-| **Framework** | Next.js 15.1.7 (App Router, Server & Client Components) |
+| **Framework** | Next.js 15.5.29 (App Router, Server & Client Components) |
 | **Language** | TypeScript (Strict mode enabled) |
 | **Styling** | Tailwind CSS 3.4 + Custom Swiggy Design Tokens |
 | **AI / LLM** | Google Gemini 2.5 Flash (`@google/genai` compatible REST API) + Deterministic Engine |
@@ -278,11 +316,11 @@ npm run build
    - **Step 5:** Click **"Add Accepted Meals to Circle Cart 🛒"**. Observe all items instantly populated in the shared group cart!
 4. **Inspect Business Telemetry:**
    - In the top evaluator bar, click **"AI Metrics 📊"**.
-   - Review live conversion metrics (82% acceptance rate, 75% cart conversion, ₹598 AOV) and the live event log.
+   - Review genuine recorded trial metrics, pilot research targets, and export test events to CSV.
 5. **Test Multi-User Real-time Sync in 2 Tabs:**
    - Open Tab A and Tab B side-by-side on `/circles/circle-cse-lunch-squad`.
    - In Tab A, switch persona to **Ananya Iyer (Veg)**. In Tab B, stay as **Aarav Sharma (Admin)**.
-   - Notice updates in Tab A instantly reflect in Tab B via `BroadcastChannel` & Supabase.
+   - Notice updates in Tab A instantly reflect in Tab B via local `BroadcastChannel` (or Supabase Realtime when cloud credentials are configured).
 6. **Lock & Finalize Order:**
    - As Aarav, click **Lock Cart**, then **Finalize & Place Demo Order**.
    - Review the generated order code (`SW-CAMPUS-XXXX`) and click **Simulate Next Status Step** to step through kitchen prep and delivery tracking.
@@ -292,9 +330,9 @@ npm run build
 ## 🔒 Security & Data Integrity
 
 - **Integer Paise Money Calculation:** All prices, subtotals, delivery fees, and discounts are stored and calculated strictly in integer paise (`₹179.00 = 17900`) to completely eliminate IEEE 754 floating-point rounding discrepancies.
-- **Row Level Security (RLS):** Production-ready SQL policies defined in `supabase/migrations/` restrict updates to circle admins and own cart items.
+- **Row Level Security (RLS) & Hardened Backend:** Production-ready SQL policies and database triggers defined in `supabase/migrations/` enforce cart ownership, admin session controls, and order cutoff deadlines.
 - **Simulated Checkout Guardrail:** No real financial transactions, payment gateways, or live order APIs are invoked; all test checkouts are explicitly tagged and recorded as simulated prototypes.
-- **Strict Dietary Isolation:** Dietary restrictions are enforced as unbreakable mathematical filters before scoring begins; vegetarian members are guaranteed never to receive non-veg suggestions.
+- **Strict Dietary Isolation:** Dietary restrictions are enforced as deterministic filters before scoring begins; vegetarian members are strictly filtered to receive only veg-tagged suggestions.
 
 ---
 

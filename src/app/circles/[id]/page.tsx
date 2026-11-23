@@ -9,9 +9,6 @@ import {
   Users,
   Plus,
   Minus,
-  Lock,
-  Unlock,
-  Clock,
   Sparkles,
   Share2,
   Check,
@@ -20,12 +17,23 @@ import {
   TrendingDown,
   ShoppingBag,
   Utensils,
+  RotateCcw,
+  Calendar,
+  Vote,
+  LifeBuoy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import { CircleMatchModal } from '@/components/circlematch/CircleMatchModal';
+import { OrderReadinessDashboard } from '@/components/circles/OrderReadinessDashboard';
+import { ReorderModal } from '@/components/circles/ReorderModal';
+import { SwiggyCartSyncModal } from '@/components/circles/SwiggyCartSyncModal';
+import { MealWindowSchedulerModal } from '@/components/circles/MealWindowSchedulerModal';
+import { CircleVoteModal } from '@/components/circlevote/CircleVoteModal';
+import { OrderRescueModal } from '@/components/rescue/OrderRescueModal';
 import { formatPaise, formatRupees, calculateMemberSplit } from '@/lib/utils';
+import { DemoOrder } from '@/types';
 import confetti from 'canvas-confetti';
 
 interface CirclePageProps {
@@ -45,22 +53,49 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
     isCircleAdmin,
     currentUser,
     getSession,
-    lockSession,
-    reopenSession,
     finalizeSession,
     getSessionCartItems,
     updateCartQuantity,
+    demoOrders,
+    getMealWindows,
+    voteSessions,
+    getActiveVoteSession,
+    castCircleVote,
+    finalizeCircleVote,
+    applyVoteWinnerToSession,
+    activeRescueIssue,
+    triggerOrderRescue,
+    acceptRescueReplacement,
+    dismissRescueIssue,
+    getJudgeDemoScenarios,
   } = useApp();
 
   const circle = getCircle(circleId);
   const members = getCircleMembers(circleId);
   const isAdmin = isCircleAdmin(circleId);
   const activeSession = getSession(circleId);
+  const mealWindows = getMealWindows(circleId);
+
+  // Active Vote Session (Phase 6: CircleVote)
+  const activeVoteSession =
+    getActiveVoteSession(circleId) ||
+    voteSessions.find((s) => s.circle_id === circleId) ||
+    null;
+
+  // Past orders for this circle
+  const circleOrders = useMemo(() => {
+    return demoOrders.filter((o) => o.circle_id === circleId);
+  }, [demoOrders, circleId]);
 
   // Modal States
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
   const [circleMatchOpen, setCircleMatchOpen] = useState(false);
+  const [swiggyCartSyncOpen, setSwiggyCartSyncOpen] = useState(false);
+  const [schedulerModalOpen, setSchedulerModalOpen] = useState(false);
+  const [voteModalOpen, setVoteModalOpen] = useState(false);
+  const [rescueModalOpen, setRescueModalOpen] = useState(false);
+  const [reorderModalOrder, setReorderModalOrder] = useState<DemoOrder | null>(null);
   const [deliveryLocation, setDeliveryLocation] = useState(
     activeSession?.delivery_location || 'Hostel Block C - Ground Floor Reception'
   );
@@ -214,6 +249,48 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
             <Button
               variant="outline"
               size="md"
+              onClick={() => setVoteModalOpen(true)}
+              className={`rounded-2xl gap-2 text-xs font-bold ${
+                activeVoteSession?.status === 'active'
+                  ? 'border-swiggy-orange bg-orange-50/70 text-swiggy-dark font-black ring-1 ring-orange-300'
+                  : ''
+              }`}
+            >
+              <Vote className="w-4 h-4 text-swiggy-orange" />
+              <span>Decision Room 🗳️</span>
+              {activeVoteSession?.status === 'active' && (
+                <span className="w-2 h-2 rounded-full bg-swiggy-orange animate-ping" />
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => {
+                if (!activeRescueIssue) {
+                  const scenarios = getJudgeDemoScenarios(circleId);
+                  triggerOrderRescue(
+                    scenarios.dietary_conflict.scenario,
+                    {
+                      id: scenarios.dietary_conflict.original_dish_id,
+                      name: scenarios.dietary_conflict.original_dish_name,
+                      price_paise: scenarios.dietary_conflict.original_price_paise,
+                    },
+                    scenarios.dietary_conflict.reason,
+                    true
+                  );
+                }
+                setRescueModalOpen(true);
+              }}
+              className="rounded-2xl gap-2 text-xs font-bold border-amber-300 bg-amber-50/50 hover:bg-amber-100/60 text-amber-900"
+            >
+              <LifeBuoy className="w-4 h-4 text-swiggy-orange" />
+              <span>Order Rescue AI 🛟</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="md"
               onClick={() => setInviteModalOpen(true)}
               className="rounded-2xl gap-2 text-xs font-bold"
             >
@@ -233,122 +310,58 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
         </div>
       </div>
 
+      {/* Active Order Rescue Notification Banner */}
+      {activeRescueIssue && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-red-50 via-amber-50 to-orange-50 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2.5 text-xs text-charcoal-800">
+            <span className="w-8 h-8 rounded-xl bg-swiggy-orange text-white flex items-center justify-center font-black shrink-0">
+              <LifeBuoy className="w-4 h-4" />
+            </span>
+            <div>
+              <p className="font-black text-charcoal-900">
+                Order Rescue Needed for {activeRescueIssue.user_name}
+              </p>
+              <p className="text-[11px] text-charcoal-600 line-clamp-1">
+                {activeRescueIssue.reason}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setRescueModalOpen(true)}
+              className="font-bold text-xs rounded-xl bg-swiggy-orange hover:bg-orange-600"
+            >
+              Review Alternatives 🛟
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => dismissRescueIssue(activeRescueIssue.id)}
+              className="text-xs rounded-xl text-charcoal-500 hover:text-charcoal-800"
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* 2. Main Content Grid: 8 Cols (Active Order & Cart) + 4 Cols (Members Panel) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column (8 cols): Ordering Session & Shared Cart */}
         <div className="lg:col-span-8 space-y-6">
-          {/* Active Ordering Session Card */}
+          {/* Active Ordering Session Card (Feature A, D & E) */}
           {activeSession ? (
-            <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-6 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-charcoal-100 dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl overflow-hidden relative bg-charcoal-100 flex-shrink-0">
-                    {activeSession.restaurant_image ? (
-                      <Image
-                        src={activeSession.restaurant_image}
-                        alt={activeSession.restaurant_name}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xl">
-                        🍽️
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal-500 dark:text-slate-400">
-                        Active Restaurant
-                      </span>
-                      {activeSession.status === 'open' ? (
-                        <Badge variant="success" size="sm" className="font-bold gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          Order Open
-                        </Badge>
-                      ) : (
-                        <Badge variant="warning" size="sm" className="font-bold gap-1">
-                          <Lock className="w-3 h-3" />
-                          Cart Locked
-                        </Badge>
-                      )}
-                    </div>
-                    <h3 className="text-lg font-black text-charcoal-900 dark:text-white leading-tight">
-                      {activeSession.restaurant_name}
-                    </h3>
-                  </div>
-                </div>
-
-                {/* Countdown & Drop point */}
-                <div className="flex sm:flex-col items-center sm:items-end justify-between text-xs">
-                  <div className="flex items-center gap-1.5 font-bold text-swiggy-orange bg-swiggy-light px-2.5 py-1 rounded-xl">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Cutoff: {timeLeftStr}</span>
-                  </div>
-                  <span className="text-[11px] text-charcoal-400 mt-1">
-                    Drop: {activeSession.delivery_location}
-                  </span>
-                </div>
-              </div>
-
-              {/* Session Controls for Members and Admins */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                <Link
-                  href={`/circles/${circleId}/restaurants/${activeSession.restaurant_id}`}
-                >
-                  <Button
-                    size="sm"
-                    variant={activeSession.status === 'open' ? 'primary' : 'outline'}
-                    disabled={activeSession.status !== 'open'}
-                    className="rounded-xl text-xs font-bold gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Browse Menu & Add Food</span>
-                  </Button>
-                </Link>
-
-                {isAdmin && (
-                  <div className="flex items-center gap-2">
-                    {activeSession.status === 'open' ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => lockSession(activeSession.id)}
-                        className="rounded-xl text-xs font-bold gap-1.5 border-charcoal-300"
-                        title="Lock cart so no more items can be added"
-                      >
-                        <Lock className="w-3.5 h-3.5 text-charcoal-600 dark:text-slate-400" />
-                        <span>Lock Cart</span>
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => reopenSession(activeSession.id)}
-                        className="rounded-xl text-xs font-bold gap-1.5 border-emerald-300 text-emerald-700 bg-emerald-50"
-                        title="Reopen cart for additions"
-                      >
-                        <Unlock className="w-3.5 h-3.5" />
-                        <span>Reopen Cart</span>
-                      </Button>
-                    )}
-
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setFinalizeModalOpen(true)}
-                      disabled={cartItems.length === 0}
-                      className="rounded-xl text-xs font-bold gap-1.5 bg-charcoal-900 text-white"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-swiggy-orange" />
-                      <span>Finalize & Place Demo Order</span>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
+            <OrderReadinessDashboard
+              session={activeSession}
+              circleId={circleId}
+              members={members}
+              isAdmin={isAdmin}
+              timeLeftStr={timeLeftStr}
+              subtotalPaise={subtotalPaise}
+              onOpenFinalizeModal={() => setFinalizeModalOpen(true)}
+            />
           ) : (
             <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-8 text-center space-y-4">
               <div className="w-14 h-14 rounded-2xl bg-orange-50 text-swiggy-orange flex items-center justify-center mx-auto text-2xl">
@@ -362,12 +375,63 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                   Ready for lunch, dinner, or midnight bites? Launch a group session with your circle.
                 </p>
               </div>
-              <Link href={`/circles/${circleId}/restaurants`}>
-                <Button size="md" className="rounded-2xl font-bold text-xs gap-2">
-                  <Utensils className="w-4 h-4" />
-                  <span>Choose Restaurant & Start Session</span>
-                </Button>
-              </Link>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Link href={`/circles/${circleId}/restaurants`}>
+                  <Button size="md" className="rounded-2xl font-bold text-xs gap-2 shadow-highlight">
+                    <Utensils className="w-4 h-4" />
+                    <span>Choose Restaurant & Start Session</span>
+                  </Button>
+                </Link>
+                {isAdmin && (
+                  <Button
+                    size="md"
+                    variant="outline"
+                    onClick={() => setSchedulerModalOpen(true)}
+                    className="rounded-2xl font-bold text-xs gap-1.5 border-orange-200 bg-orange-50/50 text-swiggy-dark hover:bg-orange-100"
+                  >
+                    <Calendar className="w-4 h-4 text-swiggy-orange" />
+                    <span>Schedule Meal Window</span>
+                  </Button>
+                )}
+                {circleOrders.length > 0 && (
+                  <Button
+                    size="md"
+                    variant="outline"
+                    onClick={() => setReorderModalOrder(circleOrders[0])}
+                    className="rounded-2xl font-bold text-xs gap-1.5 border-charcoal-200"
+                  >
+                    <RotateCcw className="w-4 h-4 text-swiggy-orange" />
+                    <span>Reorder Past Meal</span>
+                  </Button>
+                )}
+              </div>
+
+              {/* Scheduled Meal Windows Card */}
+              {mealWindows.length > 0 && (
+                <div className="rounded-2xl bg-gradient-to-r from-orange-50/70 via-white to-orange-50/70 border border-orange-200/80 p-4 text-left space-y-3 mt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider text-swiggy-orange flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5" />
+                      Recurring Campus Meal Windows ({mealWindows.length})
+                    </span>
+                    <Badge variant="orange" size="sm">PW IOI Noida</Badge>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {mealWindows.map((mw) => (
+                      <div key={mw.id} className="p-3 bg-white rounded-xl border border-charcoal-100 shadow-xs flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-bold text-charcoal-900">
+                            {mw.meal_type === 'Lunch' ? '🍱' : mw.meal_type === 'Dinner' ? '🌙' : '☕'} {mw.title}
+                          </p>
+                          <p className="text-[10px] text-charcoal-500 mt-0.5 capitalize">
+                            {mw.target_time} IST • {mw.recurrence} • {mw.pickup_point}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -384,13 +448,27 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                 </p>
               </div>
 
-              <div className="text-right">
-                <span className="text-xs text-charcoal-400 font-semibold">
-                  {totalItemsCount} {totalItemsCount === 1 ? 'dish' : 'dishes'}
-                </span>
-                <p className="text-xl font-black text-charcoal-900 dark:text-white">
-                  {formatPaise(subtotalPaise)}
-                </p>
+              <div className="flex items-center gap-3">
+                {activeSession && cartItems.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSwiggyCartSyncOpen(true)}
+                    className="rounded-xl border-orange-200 text-swiggy-dark font-bold text-xs gap-1.5 hover:bg-orange-50"
+                    title="Sync collaborative items to your Swiggy app cart via Food MCP"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5 text-swiggy-orange" />
+                    <span className="hidden sm:inline">Sync to Swiggy 🛒</span>
+                  </Button>
+                )}
+                <div className="text-right">
+                  <span className="text-xs text-charcoal-400 font-semibold">
+                    {totalItemsCount} {totalItemsCount === 1 ? 'dish' : 'dishes'}
+                  </span>
+                  <p className="text-xl font-black text-charcoal-900 dark:text-white">
+                    {formatPaise(subtotalPaise)}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -400,16 +478,16 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                 <TrendingDown className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                 {subtotalPaise > 40000 ? (
                   <span className="font-bold">
-                    🎉 Free Group Delivery Unlocked! You saved ₹90 in combined fees.
+                    🎉 ₹400 Group Pool Threshold Reached (Delivery Fee Waived)
                   </span>
                 ) : (
                   <span>
                     Add <strong>{formatRupees(Math.ceil((40000 - subtotalPaise) / 100))}</strong> more
-                    to unlock <strong>FREE Delivery</strong> for the whole circle!
+                    to reach the <strong>₹400 group delivery fee waiver</strong> threshold!
                   </span>
                 )}
               </div>
-              <span className="font-mono font-bold text-emerald-700">₹0 Delivery</span>
+              <span className="font-mono font-bold text-emerald-700">₹400 Threshold</span>
             </div>
 
             {/* Empty State */}
@@ -440,6 +518,17 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                     (s, i) => s + i.item_price_paise * i.quantity,
                     0
                   );
+                  const memberProfile = members.find((m) => m.user_id === userId)?.profile;
+                  const memberBudgetPaise = (memberProfile?.preferred_budget || circle.preferred_budget || 200) * 100;
+                  
+                  // Smart Fee Breakdown: Split standard platform fee (₹6 = 600 paise) equally among participating members
+                  const activeMembersCount = Math.max(memberGroups.size, 1);
+                  const estPlatformFeeSharePaise = Math.round(600 / activeMembersCount);
+                  const estTotalPaise = memberSubtotal + estPlatformFeeSharePaise;
+                  const remainingBudgetPaise = memberBudgetPaise - estTotalPaise;
+                  const isOverBudget = remainingBudgetPaise < 0;
+                  const budgetUtilizationPct = Math.round((estTotalPaise / memberBudgetPaise) * 100);
+                  const isApproachingBudget = !isOverBudget && budgetUtilizationPct >= 80;
 
                   return (
                     <div
@@ -450,8 +539,8 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                           : 'border-charcoal-100 dark:border-slate-800 bg-[#FAFAF8] dark:bg-slate-800/60'
                       }`}
                     >
-                      {/* Member Header */}
-                      <div className="flex items-center justify-between pb-3 border-b border-charcoal-100 dark:border-slate-800/80 mb-3">
+                      {/* Member Header & Smart Budget Guardrails */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-charcoal-100 dark:border-slate-800/80 mb-3 gap-2">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full overflow-hidden relative border border-white shadow-xs">
                             <Image
@@ -473,14 +562,34 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                               )}
                             </p>
                             <p className="text-[10px] text-charcoal-500 dark:text-slate-400">
-                              {userItems.reduce((s, i) => s + i.quantity, 0)} items
+                              {userItems.reduce((s, i) => s + i.quantity, 0)} items • Budget: {formatPaise(memberBudgetPaise)} • Est. Fee Share: {formatPaise(estPlatformFeeSharePaise)}
                             </p>
                           </div>
                         </div>
 
-                        <span className="font-black text-xs text-charcoal-900 dark:text-white">
-                          {formatPaise(memberSubtotal)}
-                        </span>
+                        <div className="flex flex-col sm:items-end gap-1">
+                          <div className="flex items-center gap-2 self-end sm:self-center">
+                            {isOverBudget ? (
+                              <span className="text-[10px] font-black text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+                                <span>⛔</span> Over Budget by {formatPaise(Math.abs(remainingBudgetPaise))}
+                              </span>
+                            ) : isApproachingBudget ? (
+                              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <span>⚠️</span> Approaching Limit ({formatPaise(remainingBudgetPaise)} left)
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <span>✓</span> Safe ({formatPaise(remainingBudgetPaise)} left)
+                              </span>
+                            )}
+                            <span className="font-black text-xs text-charcoal-900 dark:text-white">
+                              Est. {formatPaise(estTotalPaise)}
+                            </span>
+                          </div>
+                          <span className="text-[9px] text-charcoal-400 dark:text-slate-500 self-end">
+                            (Dishes: {formatPaise(memberSubtotal)} + Fee: {formatPaise(estPlatformFeeSharePaise)})
+                          </span>
+                        </div>
                       </div>
 
                       {/* Dishes List */}
@@ -713,6 +822,47 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
               </Button>
             </div>
           </div>
+
+          {/* Past Circle Orders & One-Click Reorder (Feature C) */}
+          {circleOrders.length > 0 && (
+            <div className="rounded-3xl bg-white border border-charcoal-100 p-6 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h3 className="font-extrabold text-sm text-charcoal-900 flex items-center gap-1.5">
+                  <RotateCcw className="w-4 h-4 text-swiggy-orange" />
+                  Past Circle Orders
+                </h3>
+                <span className="text-[11px] text-charcoal-400">
+                  {circleOrders.length} order{circleOrders.length > 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {circleOrders.slice(0, 3).map((o) => (
+                  <div
+                    key={o.id}
+                    className="p-3 rounded-2xl bg-charcoal-50 border border-charcoal-100 space-y-2"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-charcoal-900">{o.restaurant_name}</span>
+                      <span className="font-black text-charcoal-800">{formatPaise(o.total_paise)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-charcoal-500">
+                      <span>{o.order_code} • {o.total_items_count} items</span>
+                      <Button
+                        size="sm"
+                        variant="soft"
+                        onClick={() => setReorderModalOrder(o)}
+                        className="text-[10px] py-1 px-2.5 font-bold rounded-lg gap-1"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        Reorder
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -827,6 +977,95 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
         isOpen={circleMatchOpen}
         onClose={() => setCircleMatchOpen(false)}
         circleId={circleId}
+      />
+
+      {/* 7. One-Click Squad Reorder Modal (Feature C) */}
+      {reorderModalOrder && (
+        <ReorderModal
+          isOpen={Boolean(reorderModalOrder)}
+          onClose={() => setReorderModalOrder(null)}
+          order={reorderModalOrder}
+          circleId={circleId}
+        />
+      )}
+
+      {/* 8. Swiggy Food MCP Cart Sync Modal (Phase 4) */}
+      {activeSession && (
+        <SwiggyCartSyncModal
+          isOpen={swiggyCartSyncOpen}
+          onClose={() => setSwiggyCartSyncOpen(false)}
+          restaurantId={activeSession.restaurant_id}
+          restaurantName={activeSession.restaurant_name}
+          cartItems={cartItems}
+          circleId={circleId}
+        />
+      )}
+
+      {/* 9. Recurring Meal Window Scheduler Modal (Part 4) */}
+      <MealWindowSchedulerModal
+        isOpen={schedulerModalOpen}
+        onClose={() => setSchedulerModalOpen(false)}
+        circleId={circleId}
+      />
+
+      {/* 10. CircleVote — The Decision Room (Phase 6 Feature 1) */}
+      <CircleVoteModal
+        isOpen={voteModalOpen}
+        onClose={() => setVoteModalOpen(false)}
+        session={activeVoteSession}
+        currentUser={currentUser}
+        isAdmin={isAdmin}
+        onCastVote={(optionId) => {
+          if (activeVoteSession) {
+            castCircleVote(activeVoteSession.id, optionId);
+          }
+        }}
+        onFinalizeVote={(sessionId) => {
+          const finalized = finalizeCircleVote(sessionId);
+          if (finalized.winning_restaurant_id) {
+            applyVoteWinnerToSession(activeSession?.id || '', finalized.id);
+          }
+        }}
+        onSelectWinningRestaurant={(restId) => {
+          if (activeVoteSession) {
+            applyVoteWinnerToSession(activeSession?.id || '', activeVoteSession.id);
+          }
+          router.push(`/circles/${circleId}/restaurants/${restId}`);
+        }}
+      />
+
+      {/* 11. Order Rescue AI Modal (Phase 6 Feature 2) */}
+      <OrderRescueModal
+        isOpen={rescueModalOpen}
+        onClose={() => setRescueModalOpen(false)}
+        issue={activeRescueIssue}
+        currentUser={currentUser}
+        isAdmin={isAdmin}
+        onAcceptReplacement={(issue, alternative) => {
+          acceptRescueReplacement(issue, alternative);
+          setRescueModalOpen(false);
+          confetti({ particleCount: 60, spread: 60 });
+        }}
+        onDismiss={(issueId) => {
+          dismissRescueIssue(issueId);
+          setRescueModalOpen(false);
+        }}
+        onTriggerDemoScenario={(scenarioKey) => {
+          const scenarios = getJudgeDemoScenarios(circleId);
+          const chosen = scenarios[scenarioKey];
+          if (chosen) {
+            triggerOrderRescue(
+              chosen.scenario,
+              {
+                id: chosen.original_dish_id,
+                name: chosen.original_dish_name,
+                price_paise: chosen.original_price_paise,
+              },
+              chosen.reason,
+              true
+            );
+          }
+        }}
       />
     </div>
   );

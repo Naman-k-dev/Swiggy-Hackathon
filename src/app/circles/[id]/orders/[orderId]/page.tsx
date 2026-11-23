@@ -252,7 +252,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
                       {formatPaise(member.share_paise)}
                     </span>
                     <p className="text-[10px] text-emerald-600 font-bold">
-                      Saved ₹30 Delivery
+                      {order.delivery_fee_paise === 0 ? 'Group Fee Waived' : 'Split Delivery'}
                     </p>
                   </div>
                 </div>

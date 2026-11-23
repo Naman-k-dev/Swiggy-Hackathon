@@ -10,6 +10,14 @@ import {
   DemoOrder,
   Restaurant,
   MemberBreakdown,
+  RecurringMealWindow,
+  MealType,
+  RecurrencePattern,
+  ParticipationStatus,
+  CircleVoteSession,
+  OrderRescueIssue,
+  OrderRescueAlternative,
+  OrderRescueScenario,
 } from '@/types';
 import {
   DEMO_PERSONAS,
@@ -18,11 +26,24 @@ import {
   INITIAL_SESSIONS,
   INITIAL_CART_ITEMS,
   INITIAL_DEMO_ORDERS,
+  INITIAL_MEAL_WINDOWS,
+  INITIAL_VOTE_SESSIONS,
   DEFAULT_CAMPUS_NAME,
 } from '@/lib/data/mock-seed';
 import { DEMO_RESTAURANTS } from '@/lib/data/mock-restaurants';
 import { generateInviteCode, calculateMemberSplit } from '@/lib/utils';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { analyticsService } from '@/lib/analytics/analytics-service';
+import {
+  createVoteSession,
+  castVote,
+  completeVoteSession,
+  CandidateRestaurantInput,
+} from '@/lib/circlevote/circlevote-engine';
+import {
+  detectOrderIssue,
+  getJudgeDemoRescueScenarios,
+} from '@/lib/rescue/order-rescue-engine';
 
 export const GUEST_USER: StudentProfile = {
   id: 'student-guest',
@@ -86,7 +107,8 @@ interface AppContextType {
       price_paise: number;
       is_veg: boolean;
     },
-    customization?: string
+    customization?: string,
+    targetUserId?: string
   ) => void;
   updateCartQuantity: (cartItemId: string, delta: number) => void;
   removeFromCart: (cartItemId: string) => void;
@@ -99,6 +121,63 @@ interface AppContextType {
   // Restaurants
   restaurants: Restaurant[];
   getRestaurant: (id: string) => Restaurant | undefined;
+
+  // Phase 3 High-Value Features & Budget Guardrails
+  isLoaded: boolean;
+  toggleMemberReady: (sessionId: string, userId?: string) => void;
+  updatePickupNote: (sessionId: string, pickupNote: string) => void;
+  startReorderSession: (orderId: string) => { session: OrderingSession; previousItems: CartItem[] };
+  getMemberCartTotalPaise: (sessionId: string, userId: string) => number;
+  getMemberRemainingBudgetPaise: (sessionId: string, userId: string, circleId: string) => number;
+
+  // Recurring Campus Meal Windows (Part 4)
+  mealWindows: RecurringMealWindow[];
+  getMealWindows: (circleId: string) => RecurringMealWindow[];
+  scheduleMealWindow: (data: {
+    circleId: string;
+    mealType: MealType;
+    title: string;
+    targetTime: string;
+    cutoffMinutesBefore: number;
+    recurrence: RecurrencePattern;
+    restaurantId: string;
+    pickupPoint: string;
+    startSessionImmediately?: boolean;
+  }) => { window: RecurringMealWindow; session?: OrderingSession };
+  updateParticipation: (
+    sessionId: string,
+    userId: string,
+    status: ParticipationStatus,
+    tempBudgetPaise?: number
+  ) => void;
+
+  // Phase 6: CircleVote — The Decision Room
+  voteSessions: CircleVoteSession[];
+  getActiveVoteSession: (circleId: string) => CircleVoteSession | undefined;
+  startCircleVote: (
+    circleId: string,
+    candidateRestaurantIds: string[],
+    cutoffMinutes?: number,
+    title?: string
+  ) => CircleVoteSession;
+  castCircleVote: (sessionId: string, optionId: string) => void;
+  finalizeCircleVote: (sessionId: string) => CircleVoteSession;
+  applyVoteWinnerToSession: (sessionId: string, voteSessionId: string) => OrderingSession;
+
+  // Phase 6: Order Rescue AI
+  activeRescueIssue: OrderRescueIssue | null;
+  triggerOrderRescue: (
+    scenario: OrderRescueScenario,
+    originalDish: { id: string; name: string; price_paise: number },
+    customReason?: string,
+    isDemo?: boolean
+  ) => OrderRescueIssue;
+  acceptRescueReplacement: (
+    issue: OrderRescueIssue,
+    alternative: OrderRescueAlternative
+  ) => void;
+  dismissRescueIssue: (issueId: string) => void;
+  getJudgeDemoScenarios: (circleId: string) => Record<string, OrderRescueIssue>;
 
   // Reset & Status
   isRealtimeConnected: boolean;
@@ -124,6 +203,9 @@ const STORAGE_KEYS = {
   SESSIONS: 'scc_sessions_v1',
   CART: 'scc_cart_v1',
   ORDERS: 'scc_orders_v1',
+  MEAL_WINDOWS: 'scc_meal_windows_v1',
+  VOTE_SESSIONS: 'scc_vote_sessions_v1',
+  RESCUE_ISSUE: 'scc_rescue_issue_v1',
   THEME: 'scc_theme_v1',
 };
 
@@ -233,6 +315,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sessions, setSessions] = useState<OrderingSession[]>(INITIAL_SESSIONS);
   const [cartItems, setCartItems] = useState<CartItem[]>(INITIAL_CART_ITEMS);
   const [demoOrders, setDemoOrders] = useState<DemoOrder[]>(INITIAL_DEMO_ORDERS);
+  const [mealWindows, setMealWindows] = useState<RecurringMealWindow[]>(INITIAL_MEAL_WINDOWS);
+  const [voteSessions, setVoteSessions] = useState<CircleVoteSession[]>(INITIAL_VOTE_SESSIONS);
+  const [activeRescueIssue, setActiveRescueIssue] = useState<OrderRescueIssue | null>(null);
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -245,6 +330,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const storedSessions = localStorage.getItem(STORAGE_KEYS.SESSIONS);
       const storedCart = localStorage.getItem(STORAGE_KEYS.CART);
       const storedOrders = localStorage.getItem(STORAGE_KEYS.ORDERS);
+      const storedMealWindows = localStorage.getItem(STORAGE_KEYS.MEAL_WINDOWS);
+      const storedVoteSessions = localStorage.getItem(STORAGE_KEYS.VOTE_SESSIONS);
+      const storedRescue = localStorage.getItem(STORAGE_KEYS.RESCUE_ISSUE);
 
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
@@ -266,6 +354,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (storedSessions) setSessions(JSON.parse(storedSessions));
       if (storedCart) setCartItems(JSON.parse(storedCart));
       if (storedOrders) setDemoOrders(JSON.parse(storedOrders));
+      if (storedMealWindows) setMealWindows(JSON.parse(storedMealWindows));
+      if (storedVoteSessions) setVoteSessions(JSON.parse(storedVoteSessions));
+      if (storedRescue) setActiveRescueIssue(JSON.parse(storedRescue));
     } catch {
       // localStorage read fallback
     }
@@ -280,7 +371,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       m = members,
       s = sessions,
       cart = cartItems,
-      o = demoOrders
+      o = demoOrders,
+      w = mealWindows,
+      vs = voteSessions,
+      ri = activeRescueIssue
     ) => {
       if (typeof window === 'undefined') return;
       try {
@@ -290,11 +384,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(s));
         localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
         localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(o));
+        localStorage.setItem(STORAGE_KEYS.MEAL_WINDOWS, JSON.stringify(w));
+        localStorage.setItem(STORAGE_KEYS.VOTE_SESSIONS, JSON.stringify(vs));
+        if (ri) {
+          localStorage.setItem(STORAGE_KEYS.RESCUE_ISSUE, JSON.stringify(ri));
+        } else {
+          localStorage.removeItem(STORAGE_KEYS.RESCUE_ISSUE);
+        }
       } catch {
         // LocalStorage save error
       }
     },
-    [currentUser, circles, members, sessions, cartItems, demoOrders]
+    [currentUser, circles, members, sessions, cartItems, demoOrders, mealWindows, voteSessions, activeRescueIssue]
   );
 
   // Broadcast Channel for cross-tab realtime sync on same machine
@@ -310,6 +411,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (payload.sessions) setSessions(payload.sessions);
         if (payload.cartItems) setCartItems(payload.cartItems);
         if (payload.demoOrders) setDemoOrders(payload.demoOrders);
+        if (payload.mealWindows) setMealWindows(payload.mealWindows);
+        if (payload.voteSessions) setVoteSessions(payload.voteSessions);
+        if (payload.activeRescueIssue !== undefined) setActiveRescueIssue(payload.activeRescueIssue);
       }
     };
 
@@ -326,6 +430,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       sessions?: OrderingSession[];
       cartItems?: CartItem[];
       demoOrders?: DemoOrder[];
+      mealWindows?: RecurringMealWindow[];
+      voteSessions?: CircleVoteSession[];
+      activeRescueIssue?: OrderRescueIssue | null;
     }) => {
       if (typeof window === 'undefined') return;
       try {
@@ -618,6 +725,113 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [sessions, currentUser, circles, members, persistState, broadcastUpdate]
   );
 
+  // Feature A: Member Ready Status
+  const toggleMemberReady = useCallback(
+    (sessionId: string, userId = currentUser.id) => {
+      setSessions((prev) => {
+        const updated = prev.map((s) => {
+          if (s.id !== sessionId) return s;
+          const currentReady = s.ready_member_ids || [];
+          const isReady = currentReady.includes(userId);
+          const nextReady = isReady
+            ? currentReady.filter((id) => id !== userId)
+            : [...currentReady, userId];
+          return { ...s, ready_member_ids: nextReady, updated_at: new Date().toISOString() };
+        });
+        persistState(currentUser, circles, members, updated);
+        broadcastUpdate({ sessions: updated });
+        return updated;
+      });
+    },
+    [currentUser, circles, members, persistState, broadcastUpdate]
+  );
+
+  // Feature E: Campus Pickup Notes
+  const updatePickupNote = useCallback(
+    (sessionId: string, pickupNote: string) => {
+      setSessions((prev) => {
+        const updated = prev.map((s) => {
+          if (s.id !== sessionId) return s;
+          return { ...s, pickup_note: pickupNote, updated_at: new Date().toISOString() };
+        });
+        persistState(currentUser, circles, members, updated);
+        broadcastUpdate({ sessions: updated });
+        return updated;
+      });
+    },
+    [currentUser, circles, members, persistState, broadcastUpdate]
+  );
+
+  // Feature C: One-Click Reorder
+  const startReorderSession = useCallback(
+    (orderId: string) => {
+      const order = demoOrders.find((o) => o.id === orderId || o.order_code === orderId);
+      if (!order) throw new Error('Order not found');
+
+      const rest = DEMO_RESTAURANTS.find((r) => r.id === order.restaurant_id);
+      const restaurantName = rest ? rest.name : order.restaurant_name;
+      const restaurantImage = rest ? rest.image : '';
+
+      const newSession: OrderingSession = {
+        id: `sess-${Date.now()}`,
+        circle_id: order.circle_id,
+        created_by: currentUser.id,
+        restaurant_id: order.restaurant_id,
+        restaurant_name: restaurantName,
+        restaurant_image: restaurantImage,
+        status: 'open',
+        cutoff_time: new Date(Date.now() + 30 * 60000).toISOString(),
+        delivery_location: order.delivery_location || 'Hostel Main Gate / Common Reception',
+        pickup_note: order.delivery_instructions,
+        ready_member_ids: [],
+        created_at: new Date().toISOString(),
+      };
+
+      const updatedSessions = sessions
+        .map((s) => (s.circle_id === order.circle_id && s.status === 'open' ? { ...s, status: 'cancelled' as const } : s))
+        .concat(newSession);
+
+      setSessions(updatedSessions);
+      persistState(currentUser, circles, members, updatedSessions);
+      broadcastUpdate({ sessions: updatedSessions });
+
+      const previousItems: CartItem[] = [];
+      order.member_breakdowns.forEach((mb) => {
+        mb.items.forEach((item) => {
+          previousItems.push({
+            ...item,
+            id: `reorder-${item.item_id}-${mb.user_id}-${Date.now()}`,
+            session_id: newSession.id,
+          });
+        });
+      });
+
+      return { session: newSession, previousItems };
+    },
+    [demoOrders, currentUser, sessions, circles, members, persistState, broadcastUpdate]
+  );
+
+  // Feature B: Smart Budget Guardrails calculations in integer paise
+  const getMemberCartTotalPaise = useCallback(
+    (sessionId: string, userId: string) => {
+      return cartItems
+        .filter((ci) => ci.session_id === sessionId && ci.user_id === userId)
+        .reduce((sum, item) => sum + item.item_price_paise * item.quantity, 0);
+    },
+    [cartItems]
+  );
+
+  const getMemberRemainingBudgetPaise = useCallback(
+    (sessionId: string, userId: string, circleId: string) => {
+      const circle = circles.find((c) => c.id === circleId);
+      const user = DEMO_PERSONAS.find((p) => p.id === userId) || currentUser;
+      const budgetPaise = (user.preferred_budget || circle?.preferred_budget || 200) * 100;
+      const spentPaise = getMemberCartTotalPaise(sessionId, userId);
+      return Math.max(0, budgetPaise - spentPaise);
+    },
+    [circles, currentUser, getMemberCartTotalPaise]
+  );
+
   // Cart operations
   const getSessionCartItems = useCallback(
     (sessionId: string) => {
@@ -631,20 +845,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       sessionId: string,
       circleId: string,
       item: { id: string; name: string; price_paise: number; is_veg: boolean },
-      customization?: string
+      customization?: string,
+      targetUserId?: string
     ) => {
       const session = sessions.find((s) => s.id === sessionId);
       if (session && session.status !== 'open') {
         alert('This order session is locked or finalized.');
         return;
       }
+      if (session && session.cutoff_time && new Date(session.cutoff_time).getTime() < Date.now()) {
+        alert('The order cutoff deadline has passed for this session! Ask the organizer to extend the cutoff.');
+        return;
+      }
+
+      const effectiveUserId = targetUserId || currentUser.id;
+      const targetProfile =
+        DEMO_PERSONAS.find((p) => p.id === effectiveUserId) || currentUser;
 
       setCartItems((prev) => {
         // Check if user already has identical item
         const existingIndex = prev.findIndex(
           (ci) =>
             ci.session_id === sessionId &&
-            ci.user_id === currentUser.id &&
+            ci.user_id === effectiveUserId &&
             ci.item_id === item.id &&
             (ci.customization || '') === (customization || '')
         );
@@ -659,9 +882,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             id: `cart-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
             session_id: sessionId,
             circle_id: circleId,
-            user_id: currentUser.id,
-            user_name: currentUser.full_name,
-            user_avatar: currentUser.avatar_url,
+            user_id: effectiveUserId,
+            user_name: targetProfile.full_name,
+            user_avatar: targetProfile.avatar_url,
             item_id: item.id,
             item_name: item.name,
             item_price_paise: item.price_paise,
@@ -673,12 +896,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           updated = [...prev, newItem];
         }
 
-        persistState(currentUser, circles, members, sessions, updated);
+        persistState(currentUser, circles, members, sessions, updated, demoOrders, mealWindows);
         broadcastUpdate({ cartItems: updated });
         return updated;
       });
     },
-    [currentUser, sessions, circles, members, persistState, broadcastUpdate]
+    [currentUser, sessions, circles, members, persistState, broadcastUpdate, demoOrders, mealWindows]
   );
 
   const updateCartQuantity = useCallback(
@@ -691,6 +914,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (session && session.status !== 'open') {
           return prev;
         }
+        if (session && session.cutoff_time && new Date(session.cutoff_time).getTime() < Date.now()) {
+          alert('Cannot modify cart: order cutoff deadline has passed.');
+          return prev;
+        }
+
+        const circle = circles.find((c) => c.id === item.circle_id);
+        const isAdmin = circle?.admin_id === currentUser.id;
+        if (item.user_id !== currentUser.id && !isAdmin) {
+          alert('You can only edit your own dishes in the shared cart.');
+          return prev;
+        }
 
         let updated: CartItem[];
         if (item.quantity + delta <= 0) {
@@ -701,24 +935,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           );
         }
 
-        persistState(currentUser, circles, members, sessions, updated);
+        persistState(currentUser, circles, members, sessions, updated, demoOrders, mealWindows);
         broadcastUpdate({ cartItems: updated });
         return updated;
       });
     },
-    [sessions, currentUser, circles, members, persistState, broadcastUpdate]
+    [sessions, currentUser, circles, members, persistState, broadcastUpdate, demoOrders, mealWindows]
   );
 
   const removeFromCart = useCallback(
     (cartItemId: string) => {
       setCartItems((prev) => {
+        const item = prev.find((ci) => ci.id === cartItemId);
+        if (!item) return prev;
+
+        const session = sessions.find((s) => s.id === item.session_id);
+        if (session && session.status !== 'open') {
+          return prev;
+        }
+        if (session && session.cutoff_time && new Date(session.cutoff_time).getTime() < Date.now()) {
+          alert('Cannot remove dish: order cutoff deadline has passed.');
+          return prev;
+        }
+
+        const circle = circles.find((c) => c.id === item.circle_id);
+        const isAdmin = circle?.admin_id === currentUser.id;
+        if (item.user_id !== currentUser.id && !isAdmin) {
+          alert('You can only remove your own dishes from the shared cart.');
+          return prev;
+        }
+
         const updated = prev.filter((ci) => ci.id !== cartItemId);
-        persistState(currentUser, circles, members, sessions, updated);
+        persistState(currentUser, circles, members, sessions, updated, demoOrders, mealWindows);
         broadcastUpdate({ cartItems: updated });
         return updated;
       });
     },
-    [currentUser, circles, members, sessions, persistState, broadcastUpdate]
+    [currentUser, circles, members, sessions, persistState, broadcastUpdate, demoOrders, mealWindows]
   );
 
   // Finalize order (Simulated Checkout)
@@ -787,6 +1040,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const updatedOrders = [newOrder, ...demoOrders];
 
+      // Compute decision time in seconds from session creation
+      const sessionCreatedTime = new Date(session.created_at).getTime();
+      const decisionTimeSeconds = Math.max(5, Math.round((Date.now() - sessionCreatedTime) / 1000));
+      const uniqueParticipants = Array.from(new Set(items.map((i) => i.user_id)));
+
+      // Track genuine campus pilot order event (clearly separated from seeded baseline)
+      analyticsService.trackEvent(
+        'order_finalized',
+        session.circle_id,
+        sessionId,
+        currentUser.id,
+        {
+          orderCode,
+          participantCount: uniqueParticipants.length,
+          decisionTimeSeconds,
+          estimatedMenuSubtotalPaise: subtotalPaise,
+          totalPaise,
+          totalItemsCount,
+          restaurantId: session.restaurant_id,
+          restaurantName: session.restaurant_name,
+        },
+        'live_campus_pilot'
+      );
+
       setSessions(updatedSessions);
       setDemoOrders(updatedOrders);
       persistState(currentUser, circles, members, updatedSessions, cartItems, updatedOrders);
@@ -820,6 +1097,678 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return DEMO_RESTAURANTS.find((r) => r.id === id);
   }, []);
 
+  // Part 4: Recurring Campus Meal Windows
+  const getMealWindows = useCallback(
+    (circleId: string) => {
+      return mealWindows.filter((w) => w.circle_id === circleId && w.active);
+    },
+    [mealWindows]
+  );
+
+  const scheduleMealWindow = useCallback(
+    (data: {
+      circleId: string;
+      mealType: MealType;
+      title: string;
+      targetTime: string;
+      cutoffMinutesBefore: number;
+      recurrence: RecurrencePattern;
+      restaurantId: string;
+      pickupPoint: string;
+      startSessionImmediately?: boolean;
+    }) => {
+      const rest = DEMO_RESTAURANTS.find((r) => r.id === data.restaurantId);
+      const newWindow: RecurringMealWindow = {
+        id: `mw-${Date.now()}`,
+        circle_id: data.circleId,
+        meal_type: data.mealType,
+        title: data.title,
+        target_time: data.targetTime,
+        cutoff_minutes_before: data.cutoffMinutesBefore,
+        recurrence: data.recurrence,
+        preferred_restaurant_id: data.restaurantId,
+        preferred_restaurant_name: rest ? rest.name : 'Campus Partner',
+        pickup_point: data.pickupPoint,
+        active: true,
+        created_at: new Date().toISOString(),
+      };
+
+      const updatedWindows = [...mealWindows, newWindow];
+      setMealWindows(updatedWindows);
+
+      let createdSession: OrderingSession | undefined;
+      if (data.startSessionImmediately) {
+        const cutoffTime = new Date(Date.now() + data.cutoffMinutesBefore * 60000).toISOString();
+        const newSession: OrderingSession = {
+          id: `sess-${Date.now()}`,
+          circle_id: data.circleId,
+          created_by: currentUser.id,
+          restaurant_id: data.restaurantId,
+          restaurant_name: rest ? rest.name : 'Campus Partner',
+          restaurant_image: rest ? rest.image : '',
+          status: 'open',
+          cutoff_time: cutoffTime,
+          delivery_location: data.pickupPoint,
+          pickup_note: data.pickupPoint,
+          meal_type: data.mealType,
+          session_name: data.title,
+          recurrence: data.recurrence,
+          ready_member_ids: [currentUser.id],
+          participations: {
+            [currentUser.id]: {
+              user_id: currentUser.id,
+              status: 'joining',
+              updated_at: new Date().toISOString(),
+            },
+          },
+          created_at: new Date().toISOString(),
+        };
+
+        const updatedSessions = sessions
+          .map((s) =>
+            s.circle_id === data.circleId && s.status === 'open'
+              ? { ...s, status: 'cancelled' as const }
+              : s
+          )
+          .concat(newSession);
+
+        setSessions(updatedSessions);
+        persistState(
+          currentUser,
+          circles,
+          members,
+          updatedSessions,
+          cartItems,
+          demoOrders,
+          updatedWindows
+        );
+        broadcastUpdate({ sessions: updatedSessions, mealWindows: updatedWindows });
+        createdSession = newSession;
+      } else {
+        persistState(
+          currentUser,
+          circles,
+          members,
+          sessions,
+          cartItems,
+          demoOrders,
+          updatedWindows
+        );
+        broadcastUpdate({ mealWindows: updatedWindows });
+      }
+
+      analyticsService.trackEvent(
+        'meal_session_scheduled',
+        data.circleId,
+        createdSession?.id,
+        currentUser.id,
+        {
+          mealType: data.mealType,
+          recurrence: data.recurrence,
+          pickupPoint: data.pickupPoint,
+        }
+      );
+
+      return { window: newWindow, session: createdSession };
+    },
+    [
+      currentUser,
+      mealWindows,
+      sessions,
+      circles,
+      members,
+      cartItems,
+      demoOrders,
+      persistState,
+      broadcastUpdate,
+    ]
+  );
+
+  const updateParticipation = useCallback(
+    (
+      sessionId: string,
+      userId: string,
+      status: ParticipationStatus,
+      tempBudgetPaise?: number
+    ) => {
+      setSessions((prev) => {
+        const updated = prev.map((s) => {
+          if (s.id !== sessionId) return s;
+          const currentParts = s.participations || {};
+          const updatedParts = {
+            ...currentParts,
+            [userId]: {
+              user_id: userId,
+              status,
+              temporary_budget_paise: tempBudgetPaise,
+              updated_at: new Date().toISOString(),
+            },
+          };
+          return {
+            ...s,
+            participations: updatedParts,
+            updated_at: new Date().toISOString(),
+          };
+        });
+        persistState(currentUser, circles, members, updated, cartItems, demoOrders, mealWindows);
+        broadcastUpdate({ sessions: updated });
+        return updated;
+      });
+
+      analyticsService.trackEvent(
+        status === 'joining' ? 'member_joined_meal' : 'member_skipped_meal',
+        sessions.find((s) => s.id === sessionId)?.circle_id || '',
+        sessionId,
+        userId,
+        { status, tempBudgetPaise }
+      );
+    },
+    [sessions, currentUser, circles, members, cartItems, demoOrders, mealWindows, persistState, broadcastUpdate]
+  );
+
+  // Phase 6 Feature 1: CircleVote — The Decision Room
+  const getActiveVoteSession = useCallback(
+    (circleId: string): CircleVoteSession | undefined => {
+      return voteSessions.find((s) => s.circle_id === circleId && s.status === 'active');
+    },
+    [voteSessions]
+  );
+
+  const startCircleVote = useCallback(
+    (
+      circleId: string,
+      candidateRestaurantIds: string[],
+      cutoffMinutes = 15,
+      title = 'Meal Decision Room'
+    ): CircleVoteSession => {
+      const circle = circles.find((c) => c.id === circleId);
+      if (!circle) throw new Error('Circle not found');
+
+      const candidateRestObjs = candidateRestaurantIds
+        .map((rid) => DEMO_RESTAURANTS.find((r) => r.id === rid))
+        .filter(Boolean) as Restaurant[];
+
+      if (candidateRestObjs.length === 0) {
+        throw new Error('At least one valid restaurant candidate is required.');
+      }
+
+      const circleMemberList = members
+        .filter((m) => m.circle_id === circleId)
+        .map((m) => DEMO_PERSONAS.find((p) => p.id === m.user_id) || currentUser);
+
+      const candidateInputs: CandidateRestaurantInput[] = candidateRestObjs.map((rest) => ({
+        restaurant: rest,
+        source: 'campus_catalog',
+      }));
+
+      const newVoteSession = createVoteSession(
+        circle,
+        currentUser.id,
+        candidateInputs,
+        circleMemberList,
+        cutoffMinutes,
+        title
+      );
+
+      const updatedSessions = [
+        newVoteSession,
+        ...voteSessions.filter((s) => s.id !== newVoteSession.id),
+      ];
+
+      setVoteSessions(updatedSessions);
+      persistState(
+        currentUser,
+        circles,
+        members,
+        sessions,
+        cartItems,
+        demoOrders,
+        mealWindows,
+        updatedSessions,
+        activeRescueIssue
+      );
+      broadcastUpdate({ voteSessions: updatedSessions });
+
+      analyticsService.trackEvent(
+        'circlevote_started',
+        circleId,
+        newVoteSession.id,
+        currentUser.id,
+        {
+          optionsCount: newVoteSession.options.length,
+          candidates: candidateRestaurantIds,
+          cutoffMinutes,
+        }
+      );
+
+      return newVoteSession;
+    },
+    [
+      circles,
+      members,
+      currentUser,
+      voteSessions,
+      sessions,
+      cartItems,
+      demoOrders,
+      mealWindows,
+      activeRescueIssue,
+      persistState,
+      broadcastUpdate,
+    ]
+  );
+
+  const castCircleVote = useCallback(
+    (sessionId: string, optionId: string) => {
+      const session = voteSessions.find((s) => s.id === sessionId);
+      if (!session) throw new Error('Vote session not found');
+
+      const updated = castVote(
+        session,
+        { id: currentUser.id, name: currentUser.full_name, avatar: currentUser.avatar_url },
+        optionId
+      );
+
+      const updatedSessions = voteSessions.map((s) => (s.id === sessionId ? updated : s));
+      setVoteSessions(updatedSessions);
+      persistState(
+        currentUser,
+        circles,
+        members,
+        sessions,
+        cartItems,
+        demoOrders,
+        mealWindows,
+        updatedSessions,
+        activeRescueIssue
+      );
+      broadcastUpdate({ voteSessions: updatedSessions });
+
+      analyticsService.trackEvent(
+        'circlevote_cast',
+        session.circle_id,
+        sessionId,
+        currentUser.id,
+        {
+          optionId,
+          totalVotesCast: Object.keys(updated.votes).length,
+        }
+      );
+    },
+    [
+      voteSessions,
+      currentUser,
+      circles,
+      members,
+      sessions,
+      cartItems,
+      demoOrders,
+      mealWindows,
+      activeRescueIssue,
+      persistState,
+      broadcastUpdate,
+    ]
+  );
+
+  const finalizeCircleVote = useCallback(
+    (sessionId: string): CircleVoteSession => {
+      const session = voteSessions.find((s) => s.id === sessionId);
+      if (!session) throw new Error('Vote session not found');
+
+      const circle = circles.find((c) => c.id === session.circle_id);
+      if (!circle) throw new Error('Circle not found');
+
+      const finalized = completeVoteSession(session, currentUser.id, circle.admin_id);
+
+      const updatedSessions = voteSessions.map((s) => (s.id === sessionId ? finalized : s));
+      setVoteSessions(updatedSessions);
+      persistState(
+        currentUser,
+        circles,
+        members,
+        sessions,
+        cartItems,
+        demoOrders,
+        mealWindows,
+        updatedSessions,
+        activeRescueIssue
+      );
+      broadcastUpdate({ voteSessions: updatedSessions });
+
+      analyticsService.trackEvent(
+        'circlevote_completed',
+        session.circle_id,
+        sessionId,
+        currentUser.id,
+        {
+          winningOptionId: finalized.winning_option_id,
+          winningRestaurantId: finalized.winning_restaurant_id,
+          winnerReason: finalized.winner_reason,
+        }
+      );
+
+      return finalized;
+    },
+    [
+      voteSessions,
+      circles,
+      currentUser,
+      members,
+      sessions,
+      cartItems,
+      demoOrders,
+      mealWindows,
+      activeRescueIssue,
+      persistState,
+      broadcastUpdate,
+    ]
+  );
+
+  const applyVoteWinnerToSession = useCallback(
+    (sessionId: string, voteSessionId: string): OrderingSession => {
+      const voteSession = voteSessions.find((s) => s.id === voteSessionId);
+      if (!voteSession || !voteSession.winning_restaurant_id) {
+        throw new Error('Vote session does not have a finalized winner.');
+      }
+
+      const rest = DEMO_RESTAURANTS.find((r) => r.id === voteSession.winning_restaurant_id);
+      if (!rest) throw new Error('Winning restaurant not found in catalog.');
+
+      let targetSession = sessions.find((s) => s.id === sessionId);
+      let updatedSessions = sessions;
+
+      if (targetSession) {
+        targetSession = {
+          ...targetSession,
+          restaurant_id: rest.id,
+          restaurant_name: rest.name,
+          restaurant_image: rest.image,
+          updated_at: new Date().toISOString(),
+        };
+        updatedSessions = sessions.map((s) => (s.id === sessionId ? targetSession! : s));
+      } else {
+        const newSession: OrderingSession = {
+          id: `sess-${Date.now()}`,
+          circle_id: voteSession.circle_id,
+          created_by: currentUser.id,
+          restaurant_id: rest.id,
+          restaurant_name: rest.name,
+          restaurant_image: rest.image,
+          status: 'open',
+          cutoff_time: new Date(Date.now() + 30 * 60000).toISOString(),
+          delivery_location: 'Hostel Gate 2 (Drop Point)',
+          created_at: new Date().toISOString(),
+        };
+        targetSession = newSession;
+        updatedSessions = [newSession, ...sessions];
+      }
+
+      setSessions(updatedSessions);
+      persistState(
+        currentUser,
+        circles,
+        members,
+        updatedSessions,
+        cartItems,
+        demoOrders,
+        mealWindows,
+        voteSessions,
+        activeRescueIssue
+      );
+      broadcastUpdate({ sessions: updatedSessions });
+
+      analyticsService.trackEvent(
+        'circlevote_restaurant_selected',
+        voteSession.circle_id,
+        targetSession.id,
+        currentUser.id,
+        {
+          restaurantId: rest.id,
+          restaurantName: rest.name,
+        }
+      );
+
+      return targetSession;
+    },
+    [
+      voteSessions,
+      sessions,
+      circles,
+      currentUser,
+      members,
+      cartItems,
+      demoOrders,
+      mealWindows,
+      activeRescueIssue,
+      persistState,
+      broadcastUpdate,
+    ]
+  );
+
+  // Phase 6 Feature 2: Order Rescue AI
+  const triggerOrderRescue = useCallback(
+    (
+      scenario: OrderRescueScenario,
+      originalDish: { id: string; name: string; price_paise: number },
+      customReason?: string,
+      isDemo = false
+    ): OrderRescueIssue => {
+      const activeSession = sessions.find((s) => s.status === 'open');
+      const rest = activeSession
+        ? DEMO_RESTAURANTS.find((r) => r.id === activeSession.restaurant_id) || DEMO_RESTAURANTS[0]
+        : DEMO_RESTAURANTS[0];
+
+      const issue = detectOrderIssue(
+        scenario,
+        activeSession?.id || 'sess-rescue-demo',
+        activeSession?.circle_id || circles[0]?.id || 'circle-cse-lunch-squad',
+        currentUser,
+        originalDish,
+        rest,
+        cartItems,
+        customReason,
+        isDemo
+      );
+
+      setActiveRescueIssue(issue);
+      persistState(
+        currentUser,
+        circles,
+        members,
+        sessions,
+        cartItems,
+        demoOrders,
+        mealWindows,
+        voteSessions,
+        issue
+      );
+      broadcastUpdate({ activeRescueIssue: issue });
+
+      analyticsService.trackEvent(
+        'order_rescue_triggered',
+        issue.circle_id,
+        issue.session_id,
+        currentUser.id,
+        {
+          scenario,
+          originalDishId: originalDish.id,
+          alternativesCount: issue.suggested_alternatives.length,
+          isDemo,
+        }
+      );
+
+      return issue;
+    },
+    [
+      sessions,
+      circles,
+      currentUser,
+      cartItems,
+      members,
+      demoOrders,
+      mealWindows,
+      voteSessions,
+      persistState,
+      broadcastUpdate,
+    ]
+  );
+
+  const acceptRescueReplacement = useCallback(
+    (issue: OrderRescueIssue, alternative: OrderRescueAlternative) => {
+      const session = sessions.find((s) => s.id === issue.session_id);
+      if (session && session.status !== 'open') {
+        alert('Cannot modify cart: Ordering session is locked or finalized.');
+        return;
+      }
+      if (session && session.cutoff_time && new Date(session.cutoff_time).getTime() < Date.now()) {
+        alert('Cannot modify cart: Session order cutoff deadline has expired.');
+        return;
+      }
+
+      setCartItems((prev) => {
+        const existingIndex = prev.findIndex(
+          (ci) => ci.session_id === issue.session_id && ci.user_id === issue.user_id && ci.item_id === issue.original_dish_id
+        );
+
+        let updated: CartItem[];
+        if (existingIndex !== -1) {
+          updated = prev.map((ci, idx) =>
+            idx === existingIndex
+              ? {
+                  ...ci,
+                  item_id: alternative.dish_id,
+                  item_name: alternative.dish_name,
+                  item_price_paise: alternative.price_paise,
+                  item_is_veg: alternative.is_veg,
+                  updated_at: new Date().toISOString(),
+                }
+              : ci
+          );
+        } else {
+          const newItem: CartItem = {
+            id: `ci-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            session_id: issue.session_id,
+            circle_id: issue.circle_id,
+            user_id: issue.user_id,
+            user_name: issue.user_name,
+            user_avatar: issue.user_avatar,
+            item_id: alternative.dish_id,
+            item_name: alternative.dish_name,
+            item_price_paise: alternative.price_paise,
+            item_is_veg: alternative.is_veg,
+            quantity: 1,
+            created_at: new Date().toISOString(),
+          };
+          updated = [...prev, newItem];
+        }
+
+        persistState(
+          currentUser,
+          circles,
+          members,
+          sessions,
+          updated,
+          demoOrders,
+          mealWindows,
+          voteSessions,
+          null
+        );
+        broadcastUpdate({ cartItems: updated, activeRescueIssue: null });
+        return updated;
+      });
+
+      setActiveRescueIssue(null);
+
+      analyticsService.trackEvent(
+        'order_rescue_accepted',
+        issue.circle_id,
+        issue.session_id,
+        currentUser.id,
+        {
+          scenario: issue.scenario,
+          originalDishId: issue.original_dish_id,
+          replacementDishId: alternative.dish_id,
+          priceDiffPaise: alternative.price_diff_paise,
+        }
+      );
+    },
+    [
+      sessions,
+      currentUser,
+      circles,
+      members,
+      demoOrders,
+      mealWindows,
+      voteSessions,
+      persistState,
+      broadcastUpdate,
+    ]
+  );
+
+  const dismissRescueIssue = useCallback(
+    (issueId: string) => {
+      const issue = activeRescueIssue;
+      setActiveRescueIssue(null);
+      persistState(
+        currentUser,
+        circles,
+        members,
+        sessions,
+        cartItems,
+        demoOrders,
+        mealWindows,
+        voteSessions,
+        null
+      );
+      broadcastUpdate({ activeRescueIssue: null });
+
+      if (issue) {
+        analyticsService.trackEvent(
+          'order_rescue_declined',
+          issue.circle_id,
+          issue.session_id,
+          currentUser.id,
+          {
+            issueId,
+            scenario: issue.scenario,
+          }
+        );
+      }
+    },
+    [
+      activeRescueIssue,
+      currentUser,
+      circles,
+      members,
+      sessions,
+      cartItems,
+      demoOrders,
+      mealWindows,
+      voteSessions,
+      persistState,
+      broadcastUpdate,
+    ]
+  );
+
+  const getJudgeDemoScenarios = useCallback(
+    (circleId: string): Record<string, OrderRescueIssue> => {
+      const activeSession = sessions.find((s) => s.circle_id === circleId && s.status === 'open') || sessions[0];
+      const rest = DEMO_RESTAURANTS.find((r) => r.id === activeSession?.restaurant_id) || DEMO_RESTAURANTS[0];
+      const circleMemberList = members
+        .filter((m) => m.circle_id === circleId)
+        .map((m) => DEMO_PERSONAS.find((p) => p.id === m.user_id) || currentUser);
+
+      return getJudgeDemoRescueScenarios(
+        activeSession?.id || 'sess-cse-today',
+        circleId,
+        rest,
+        circleMemberList,
+        cartItems
+      );
+    },
+    [sessions, members, currentUser, cartItems]
+  );
+
   // Reset demo data
   const resetDemoData = useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -829,6 +1778,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem(STORAGE_KEYS.SESSIONS);
       localStorage.removeItem(STORAGE_KEYS.CART);
       localStorage.removeItem(STORAGE_KEYS.ORDERS);
+      localStorage.removeItem(STORAGE_KEYS.MEAL_WINDOWS);
+      localStorage.removeItem(STORAGE_KEYS.VOTE_SESSIONS);
+      localStorage.removeItem(STORAGE_KEYS.RESCUE_ISSUE);
     }
     setCurrentUser(DEMO_PERSONAS[0]);
     setCircles(INITIAL_CIRCLES);
@@ -836,6 +1788,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSessions(INITIAL_SESSIONS);
     setCartItems(INITIAL_CART_ITEMS);
     setDemoOrders(INITIAL_DEMO_ORDERS);
+    setMealWindows(INITIAL_MEAL_WINDOWS);
+    setVoteSessions(INITIAL_VOTE_SESSIONS);
+    setActiveRescueIssue(null);
 
     broadcastUpdate({
       circles: INITIAL_CIRCLES,
@@ -843,6 +1798,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       sessions: INITIAL_SESSIONS,
       cartItems: INITIAL_CART_ITEMS,
       demoOrders: INITIAL_DEMO_ORDERS,
+      mealWindows: INITIAL_MEAL_WINDOWS,
+      voteSessions: INITIAL_VOTE_SESSIONS,
+      activeRescueIssue: null,
     });
   }, [broadcastUpdate]);
 
@@ -878,6 +1836,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       isRealtimeConnected,
       isSupabaseActive: isSupabaseConfigured,
       resetDemoData,
+      isLoaded: mounted,
+      toggleMemberReady,
+      updatePickupNote,
+      startReorderSession,
+      getMemberCartTotalPaise,
+      getMemberRemainingBudgetPaise,
+      mealWindows,
+      getMealWindows,
+      scheduleMealWindow,
+      updateParticipation,
+      // Phase 6: CircleVote
+      voteSessions,
+      getActiveVoteSession,
+      startCircleVote,
+      castCircleVote,
+      finalizeCircleVote,
+      applyVoteWinnerToSession,
+      // Phase 6: Order Rescue AI
+      activeRescueIssue,
+      triggerOrderRescue,
+      acceptRescueReplacement,
+      dismissRescueIssue,
+      getJudgeDemoScenarios,
       theme,
       toggleTheme,
       addProfile,
@@ -916,6 +1897,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       getRestaurant,
       isRealtimeConnected,
       resetDemoData,
+      mounted,
+      toggleMemberReady,
+      updatePickupNote,
+      startReorderSession,
+      getMemberCartTotalPaise,
+      getMemberRemainingBudgetPaise,
+      mealWindows,
+      getMealWindows,
+      scheduleMealWindow,
+      updateParticipation,
+      voteSessions,
+      getActiveVoteSession,
+      startCircleVote,
+      castCircleVote,
+      finalizeCircleVote,
+      applyVoteWinnerToSession,
+      activeRescueIssue,
+      triggerOrderRescue,
+      acceptRescueReplacement,
+      dismissRescueIssue,
+      getJudgeDemoScenarios,
       theme,
       toggleTheme,
       addProfile,
@@ -923,7 +1925,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   if (!mounted) {
-    return null; // Avoid hydration mismatch on initial local storage read
+    return (
+      <div className="min-h-screen bg-[#FAFAF8] flex flex-col items-center justify-center p-4">
+        <div className="w-14 h-14 rounded-3xl bg-gradient-to-tr from-[#FC8019] to-[#E86F0A] flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-[#FC8019]/20 animate-pulse">
+          🍱
+        </div>
+        <p className="mt-4 text-xs font-black tracking-wider text-[#171717] uppercase">
+          Swiggy Campus Circles
+        </p>
+        <p className="text-[11px] text-[#737373] mt-1 font-medium">
+          Loading campus squad...
+        </p>
+      </div>
+    );
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

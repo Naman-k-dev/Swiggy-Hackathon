@@ -21,6 +21,14 @@ export function PersonaSwitcherBar() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [addProfileOpen, setAddProfileOpen] = useState(false);
+  const [mcpStatus, setMcpStatus] = useState<{ isConnected: boolean; isLive: boolean } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/swiggy/status')
+      .then((r) => r.json())
+      .then((d) => setMcpStatus(d))
+      .catch(() => setMcpStatus({ isConnected: false, isLive: false }));
+  }, []);
 
   // Auto prompt custom profile creation if user hasn't created one
   useEffect(() => {
@@ -28,7 +36,6 @@ export function PersonaSwitcherBar() {
     try {
       const hasCustomProfile = localStorage.getItem('scc_has_custom_profile_v1');
       if (!hasCustomProfile) {
-        // Small delay to allow clean initial render
         const timer = setTimeout(() => {
           setAddProfileOpen(true);
         }, 500);
@@ -36,6 +43,18 @@ export function PersonaSwitcherBar() {
       }
     } catch {}
   }, []);
+
+  const handleToggleMCP = async () => {
+    if (mcpStatus?.isLive) {
+      if (confirm('Disconnect Swiggy Food MCP and switch to Campus Verified Demo Menus?')) {
+        await fetch('/api/auth/swiggy/disconnect', { method: 'POST' });
+        setMcpStatus({ isConnected: false, isLive: false });
+        window.location.reload();
+      }
+    } else {
+      window.location.href = '/api/auth/swiggy/authorize?mode=sandbox';
+    }
+  };
 
   const handleReset = () => {
     if (confirm('Reset prototype to initial state?')) {
@@ -88,8 +107,30 @@ export function PersonaSwitcherBar() {
               </button>
             </div>
 
-            {/* Right: Theme Toggle, AI Metrics, Sync Status & Reset */}
+            {/* Right: MCP Status Pill, Theme Toggle, AI Metrics, Sync Status & Reset */}
             <div className="flex items-center gap-2">
+              {/* Data Source & MCP Status Pill */}
+              <button
+                onClick={handleToggleMCP}
+                className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-full border transition-all duration-200 hover:scale-105 ${
+                  mcpStatus?.isLive
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-slate-800 dark:text-orange-400 dark:border-slate-700'
+                }`}
+                title={
+                  mcpStatus?.isLive
+                    ? 'Connected to Swiggy Food MCP. Click to toggle to Demo mode.'
+                    : 'Click to connect Swiggy Food MCP OAuth 2.1.'
+                }
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    mcpStatus?.isLive ? 'bg-emerald-500 animate-pulse' : 'bg-swiggy-orange'
+                  }`}
+                />
+                <span>{mcpStatus?.isLive ? '🟢 Swiggy MCP Live' : '🏷️ Campus Demo'}</span>
+              </button>
+
               <button
                 onClick={toggleTheme}
                 className="p-1.5 rounded-full bg-charcoal-50 dark:bg-slate-800 hover:bg-orange-100 dark:hover:bg-slate-700 text-charcoal-700 dark:text-slate-200 border border-charcoal-200/60 dark:border-slate-700 transition-all duration-200 hover:scale-105"

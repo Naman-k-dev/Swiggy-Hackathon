@@ -5,6 +5,12 @@
 :root {
   --background: #FAFAF8;
   --foreground: #171717;
+  --surface: #FFFFFF;
+  --surface-muted: #FFF5EE;
+  --primary-orange: #FC8019;
+  --primary-hover: #E86F0A;
+  --success-green: #16834A;
+  --error-red: #DC2626;
 }
 
 .dark {
@@ -88,7 +94,7 @@ body {
 .veg-icon {
   width: 16px;
   height: 16px;
-  border: 1.5px solid #00A343;
+  border: 1.5px solid #16834A;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -101,7 +107,7 @@ body {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #00A343;
+  background-color: #16834A;
 }
 
 .non-veg-icon {

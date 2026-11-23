@@ -21,7 +21,7 @@ export function WhyStudentsNeed() {
       pain: 'Multiple ₹40 delivery charges',
       painSub: 'Four students in adjacent hostel rooms paying ₹160 in separate delivery and handling fees.',
       solution: 'Single shared delivery to campus gate',
-      solutionSub: 'Hit the group threshold easily to unlock free delivery and pooled restaurant promotions.',
+      solutionSub: 'Reach the ₹400 group cart threshold to waive delivery fees and pool restaurant promotions.',
       icon: Truck,
     },
     {
