@@ -1,21 +1,21 @@
 -- ==============================================================================
 -- SWIGGY CAMPUS CIRCLES - SEED DATA
--- Fictional college community data for BITS Pilani / IIT Delhi campus prototype
+-- Fictional college community data for PW Institute of Innovation Noida campus prototype
 -- ==============================================================================
 
 -- 1. SEED PROFILES (4 Student Personas)
 INSERT INTO public.profiles (id, full_name, email, avatar_url, college, academic_year, dietary_pref, preferred_budget)
 VALUES
-  ('a0000000-0000-0000-0000-000000000001', 'Aarav Sharma', 'aarav.sharma@campus.edu', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', 'BITS Pilani - Hyderabad Campus', '3rd Year B.Tech CSE', 'BOTH', 250),
-  ('a0000000-0000-0000-0000-000000000002', 'Ananya Iyer', 'ananya.iyer@campus.edu', 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80', 'BITS Pilani - Hyderabad Campus', '3rd Year B.Tech CSE', 'VEG', 180),
-  ('a0000000-0000-0000-0000-000000000003', 'Rohan Mehta', 'rohan.mehta@campus.edu', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80', 'BITS Pilani - Hyderabad Campus', '3rd Year B.Tech CSE', 'NON_VEG', 220),
-  ('a0000000-0000-0000-0000-000000000004', 'Priya Nair', 'priya.nair@campus.edu', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80', 'BITS Pilani - Hyderabad Campus', '2nd Year B.Tech ECE', 'VEG', 160)
+  ('a0000000-0000-0000-0000-000000000001', 'Aarav Sharma', 'aarav.sharma@campus.edu', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', 'PW Institute of Innovation Noida', '3rd Year B.Tech CSE', 'BOTH', 250),
+  ('a0000000-0000-0000-0000-000000000002', 'Ananya Iyer', 'ananya.iyer@campus.edu', 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80', 'PW Institute of Innovation Noida', '3rd Year B.Tech CSE', 'VEG', 180),
+  ('a0000000-0000-0000-0000-000000000003', 'Rohan Mehta', 'rohan.mehta@campus.edu', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80', 'PW Institute of Innovation Noida', '3rd Year B.Tech CSE', 'NON_VEG', 220),
+  ('a0000000-0000-0000-0000-000000000004', 'Priya Nair', 'priya.nair@campus.edu', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80', 'PW Institute of Innovation Noida', '2nd Year B.Tech ECE', 'VEG', 160)
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. SEED CIRCLE: "CSE Lunch Squad"
 INSERT INTO public.circles (id, name, type, college, description, emoji, banner_gradient, invite_code, preferred_budget, admin_id)
 VALUES
-  ('c0000000-0000-0000-0000-000000000001', 'CSE Lunch Squad', 'Classmates', 'BITS Pilani - Hyderabad Campus', 'Daily lunch & post-lab food coordination for CSE Batch 2024. Save delivery charges & split seamlessly.', '🍱', 'from-orange-500 to-amber-500', 'CAMPUS24', 250, 'a0000000-0000-0000-0000-000000000001')
+  ('c0000000-0000-0000-0000-000000000001', 'CSE Lunch Squad', 'Classmates', 'PW Institute of Innovation Noida', 'Daily lunch & post-lab food coordination for CSE Batch 2024. Save delivery charges & split seamlessly.', '🍱', 'from-orange-500 to-amber-500', 'CAMPUS24', 250, 'a0000000-0000-0000-0000-000000000001')
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. SEED CIRCLE MEMBERS

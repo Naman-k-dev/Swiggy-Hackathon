@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/store/demo-context';
+import { DEFAULT_CAMPUS_NAME } from '@/lib/data/mock-seed';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DietaryPref } from '@/types';
@@ -45,12 +46,12 @@ export default function OnboardingPage() {
   ];
 
   const colleges = [
-    'BITS Pilani - Hyderabad Campus',
-    'BITS Pilani - Pilani Campus',
-    'BITS Pilani - Goa Campus',
+    DEFAULT_CAMPUS_NAME,
     'IIT Delhi',
     'IIT Bombay',
+    'IIIT Delhi',
     'IIIT Hyderabad',
+    'BITS Pilani',
     'Manipal University',
     'VIT Vellore',
   ];

@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name TEXT NOT NULL,
   email TEXT,
   avatar_url TEXT,
-  college TEXT NOT NULL DEFAULT 'BITS Pilani',
+  college TEXT NOT NULL DEFAULT 'PW Institute of Innovation Noida',
   academic_year TEXT DEFAULT '3rd Year B.Tech',
   dietary_pref TEXT CHECK (dietary_pref IN ('VEG', 'NON_VEG', 'BOTH')) DEFAULT 'BOTH',
   preferred_budget INTEGER DEFAULT 200, -- In Rupees

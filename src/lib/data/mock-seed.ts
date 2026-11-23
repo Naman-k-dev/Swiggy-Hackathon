@@ -1,12 +1,15 @@
 import { Circle, CircleMember, OrderingSession, CartItem, StudentProfile, DemoOrder } from '@/types';
 
+export const DEFAULT_CAMPUS_NAME =
+  process.env.NEXT_PUBLIC_CAMPUS_NAME || 'PW Institute of Innovation Noida';
+
 export const DEMO_PERSONAS: StudentProfile[] = [
   {
     id: 'a0000000-0000-0000-0000-000000000001',
     full_name: 'Aarav Sharma',
     email: 'aarav.sharma@campus.edu',
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    college: 'BITS Pilani - Hyderabad Campus',
+    college: DEFAULT_CAMPUS_NAME,
     academic_year: '3rd Year B.Tech CSE',
     dietary_pref: 'BOTH',
     preferred_budget: 250,
@@ -16,7 +19,7 @@ export const DEMO_PERSONAS: StudentProfile[] = [
     full_name: 'Ananya Iyer',
     email: 'ananya.iyer@campus.edu',
     avatar_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-    college: 'BITS Pilani - Hyderabad Campus',
+    college: DEFAULT_CAMPUS_NAME,
     academic_year: '3rd Year B.Tech CSE',
     dietary_pref: 'VEG',
     preferred_budget: 180,
@@ -26,7 +29,7 @@ export const DEMO_PERSONAS: StudentProfile[] = [
     full_name: 'Rohan Mehta',
     email: 'rohan.mehta@campus.edu',
     avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    college: 'BITS Pilani - Hyderabad Campus',
+    college: DEFAULT_CAMPUS_NAME,
     academic_year: '3rd Year B.Tech CSE',
     dietary_pref: 'NON_VEG',
     preferred_budget: 220,
@@ -36,7 +39,7 @@ export const DEMO_PERSONAS: StudentProfile[] = [
     full_name: 'Priya Nair',
     email: 'priya.nair@campus.edu',
     avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-    college: 'BITS Pilani - Hyderabad Campus',
+    college: DEFAULT_CAMPUS_NAME,
     academic_year: '2nd Year B.Tech ECE',
     dietary_pref: 'VEG',
     preferred_budget: 160,
@@ -48,7 +51,7 @@ export const INITIAL_CIRCLES: Circle[] = [
     id: 'circle-cse-lunch-squad',
     name: 'CSE Lunch Squad',
     type: 'Classmates',
-    college: 'BITS Pilani - Hyderabad Campus',
+    college: DEFAULT_CAMPUS_NAME,
     description: 'Daily lunch & post-lab food coordination for CSE Batch 2024. Save delivery charges & split seamlessly.',
     emoji: '🍱',
     banner_gradient: 'from-orange-500 to-amber-500',
@@ -62,7 +65,7 @@ export const INITIAL_CIRCLES: Circle[] = [
     id: 'circle-hostel-block-c',
     name: 'Hostel Block-C 3rd Floor',
     type: 'Hostel',
-    college: 'BITS Pilani - Hyderabad Campus',
+    college: DEFAULT_CAMPUS_NAME,
     description: 'Late night maggi, chai & midnight biryani runs for Room 301-320.',
     emoji: '🌙',
     banner_gradient: 'from-indigo-600 to-violet-600',

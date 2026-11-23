@@ -18,6 +18,7 @@ import {
   INITIAL_SESSIONS,
   INITIAL_CART_ITEMS,
   INITIAL_DEMO_ORDERS,
+  DEFAULT_CAMPUS_NAME,
 } from '@/lib/data/mock-seed';
 import { DEMO_RESTAURANTS } from '@/lib/data/mock-restaurants';
 import { generateInviteCode, calculateMemberSplit } from '@/lib/utils';
@@ -133,8 +134,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const storedCart = localStorage.getItem(STORAGE_KEYS.CART);
       const storedOrders = localStorage.getItem(STORAGE_KEYS.ORDERS);
 
-      if (storedUser) setCurrentUser(JSON.parse(storedUser));
-      if (storedCircles) setCircles(JSON.parse(storedCircles));
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        if (parsed.college === 'BITS Pilani - Hyderabad Campus') {
+          parsed.college = DEFAULT_CAMPUS_NAME;
+        }
+        setCurrentUser(parsed);
+      }
+      if (storedCircles) {
+        const parsedCircles: Circle[] = JSON.parse(storedCircles);
+        const updatedCircles = parsedCircles.map((c) =>
+          c.college === 'BITS Pilani - Hyderabad Campus'
+            ? { ...c, college: DEFAULT_CAMPUS_NAME }
+            : c
+        );
+        setCircles(updatedCircles);
+      }
       if (storedMembers) setMembers(JSON.parse(storedMembers));
       if (storedSessions) setSessions(JSON.parse(storedSessions));
       if (storedCart) setCartItems(JSON.parse(storedCart));
