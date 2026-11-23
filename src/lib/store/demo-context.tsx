@@ -856,6 +856,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       const updatedOrders = [newOrder, ...demoOrders];
 
+      // Compute decision time in seconds from session creation
+      const sessionCreatedTime = new Date(session.created_at).getTime();
+      const decisionTimeSeconds = Math.max(5, Math.round((Date.now() - sessionCreatedTime) / 1000));
+      const uniqueParticipants = Array.from(new Set(items.map((i) => i.user_id)));
+
+      // Track genuine campus pilot order event (clearly separated from seeded baseline)
+      analyticsService.trackEvent(
+        'order_finalized',
+        session.circle_id,
+        sessionId,
+        currentUser.id,
+        {
+          orderCode,
+          participantCount: uniqueParticipants.length,
+          decisionTimeSeconds,
+          estimatedMenuSubtotalPaise: subtotalPaise,
+          totalPaise,
+          totalItemsCount,
+          restaurantId: session.restaurant_id,
+          restaurantName: session.restaurant_name,
+        },
+        'live_campus_pilot'
+      );
+
       setSessions(updatedSessions);
       setDemoOrders(updatedOrders);
       persistState(currentUser, circles, members, updatedSessions, cartItems, updatedOrders);

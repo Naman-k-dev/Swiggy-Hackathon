@@ -1,4 +1,4 @@
-import { DietaryPref } from '@/types';
+export type DietaryPref = 'VEG' | 'NON_VEG' | 'BOTH';
 
 export type HungerLevel = 'light' | 'regular' | 'hungry';
 
@@ -101,17 +101,49 @@ export type AnalyticsEventType =
   | 'swiggy_cart_synced'
   | 'circlematch_abandoned';
 
+export type EventSource = 'live_campus_pilot' | 'seeded_baseline';
+
 export interface AnalyticsEvent {
   id: string;
   event: AnalyticsEventType;
   circleId: string;
   sessionId?: string;
   userId?: string;
+  source: EventSource; // clearly distinguishes live campus pilot events from seeded baseline
   properties?: Record<string, unknown>;
   timestamp: string;
 }
 
+export interface CampusPilotRecordedSession {
+  sessionId: string;
+  circleId: string;
+  participantCount: number;
+  decisionTimeSeconds: number;
+  recommendationAccepted: boolean;
+  cartCompleted: boolean;
+  estimatedMenuSubtotalPaise: number;
+  repeatParticipationCount: number;
+  source: EventSource;
+  timestamp: string;
+}
+
 export interface BusinessAnalyticsSummary {
+  // Live genuine pilot metrics
+  liveRecordedSessions: number;
+  liveAcceptanceRatePct: number | null;
+  liveCartCompletionRatePct: number | null;
+  liveAvgDecisionTimeSec: number | null;
+  liveAvgOrderValuePaise: number | null;
+  liveRepeatParticipantCount: number;
+
+  // Target pilot research hypotheses & benchmarks
+  targetAcceptanceRatePct: number;
+  targetCartCompletionRatePct: number;
+  targetDecisionTimeSec: number;
+  targetAOVPaise: number;
+
+  // Overall session counters & log
+  totalEventsCount: number;
   totalMatchSessions: number;
   recommendationsGenerated: number;
   recommendationsAccepted: number;

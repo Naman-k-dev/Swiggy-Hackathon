@@ -377,16 +377,16 @@ export default function CircleDetailPage({ params }: CirclePageProps) {
                 <TrendingDown className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                 {subtotalPaise > 40000 ? (
                   <span className="font-bold">
-                    🎉 Free Group Delivery Unlocked! You saved ₹90 in combined fees.
+                    🎉 ₹400 Group Pool Threshold Reached (Delivery Fee Waived)
                   </span>
                 ) : (
                   <span>
                     Add <strong>{formatRupees(Math.ceil((40000 - subtotalPaise) / 100))}</strong> more
-                    to unlock <strong>FREE Delivery</strong> for the whole circle!
+                    to reach the <strong>₹400 group delivery fee waiver</strong> threshold!
                   </span>
                 )}
               </div>
-              <span className="font-mono font-bold text-emerald-700">₹0 Delivery</span>
+              <span className="font-mono font-bold text-emerald-700">₹400 Threshold</span>
             </div>
 
             {/* Empty State */}

@@ -80,7 +80,7 @@ export function JudgeGuideModal({ isOpen, onClose }: JudgeGuideModalProps) {
             Core Innovation: Why Campus Circles beats standard group carts
           </p>
           <p className="text-xs text-charcoal-700 leading-relaxed">
-            Standard food apps treat group ordering as a single ephemeral WhatsApp link. <strong>Campus Circles</strong> turns ordering into persistent campus communities with individual student budget caps, automated paise-accurate splitting, free delivery pool incentives, Swiggy Food MCP live menu matching, and single campus-gate batch drops.
+            Standard food apps treat group ordering as a single ephemeral WhatsApp link. <strong>Campus Circles</strong> turns ordering into persistent campus communities with individual student budget caps, automated paise-accurate splitting, group delivery pool incentives, Swiggy Food MCP live menu matching, and single campus-gate batch drops.
           </p>
         </div>
 

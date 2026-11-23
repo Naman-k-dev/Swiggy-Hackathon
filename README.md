@@ -172,8 +172,8 @@ CircleMatch AI eliminates group dining deadlock through a deterministic constrai
 - Tracks 9 granular lifecycle events:
   - `circlematch_started`, `preferences_completed`, `recommendations_generated`, `recommendation_viewed`, `dish_replaced`, `member_toggled`, `recommendation_accepted`, `cart_added_from_ai`, `checkout_completed`.
 - **In-App Analytics Modal (`AI Metrics 📊`):**
-  - Displays conversion KPIs: **Recommendation Acceptance Rate (82%)**, **Cart Conversion Rate (75%)**, **Average Order Value (₹598)**, **Decision Time Saved (65%)**.
-  - Live inspection log showing the latest telemetry events with payloads and timestamps.
+  - Displays pilot telemetry and research benchmarks: **Acceptance Consensus (≥70% target)**, **Cart Completion (≥60% target)**, **Group Order Value (₹500 target)**, and **Decision Time (<90s target)**.
+  - Live inspection log showing genuine pilot events vs baseline seed data with RFC 4180 CSV export.
 
 ---
 
@@ -181,7 +181,7 @@ CircleMatch AI eliminates group dining deadlock through a deterministic constrai
 
 | Layer | Technology |
 |---|---|
-| **Framework** | Next.js 15.1.7 (App Router, Server & Client Components) |
+| **Framework** | Next.js 15.5.29 (App Router, Server & Client Components) |
 | **Language** | TypeScript (Strict mode enabled) |
 | **Styling** | Tailwind CSS 3.4 + Custom Swiggy Design Tokens |
 | **AI / LLM** | Google Gemini 2.5 Flash (`@google/genai` compatible REST API) + Deterministic Engine |
@@ -316,11 +316,11 @@ npm run build
    - **Step 5:** Click **"Add Accepted Meals to Circle Cart 🛒"**. Observe all items instantly populated in the shared group cart!
 4. **Inspect Business Telemetry:**
    - In the top evaluator bar, click **"AI Metrics 📊"**.
-   - Review live conversion metrics (82% acceptance rate, 75% cart conversion, ₹598 AOV) and the live event log.
+   - Review genuine recorded trial metrics, pilot research targets, and export test events to CSV.
 5. **Test Multi-User Real-time Sync in 2 Tabs:**
    - Open Tab A and Tab B side-by-side on `/circles/circle-cse-lunch-squad`.
    - In Tab A, switch persona to **Ananya Iyer (Veg)**. In Tab B, stay as **Aarav Sharma (Admin)**.
-   - Notice updates in Tab A instantly reflect in Tab B via `BroadcastChannel` & Supabase.
+   - Notice updates in Tab A instantly reflect in Tab B via local `BroadcastChannel` (or Supabase Realtime when cloud credentials are configured).
 6. **Lock & Finalize Order:**
    - As Aarav, click **Lock Cart**, then **Finalize & Place Demo Order**.
    - Review the generated order code (`SW-CAMPUS-XXXX`) and click **Simulate Next Status Step** to step through kitchen prep and delivery tracking.
@@ -330,9 +330,9 @@ npm run build
 ## 🔒 Security & Data Integrity
 
 - **Integer Paise Money Calculation:** All prices, subtotals, delivery fees, and discounts are stored and calculated strictly in integer paise (`₹179.00 = 17900`) to completely eliminate IEEE 754 floating-point rounding discrepancies.
-- **Row Level Security (RLS):** Production-ready SQL policies defined in `supabase/migrations/` restrict updates to circle admins and own cart items.
+- **Row Level Security (RLS) & Hardened Backend:** Production-ready SQL policies and database triggers defined in `supabase/migrations/` enforce cart ownership, admin session controls, and order cutoff deadlines.
 - **Simulated Checkout Guardrail:** No real financial transactions, payment gateways, or live order APIs are invoked; all test checkouts are explicitly tagged and recorded as simulated prototypes.
-- **Strict Dietary Isolation:** Dietary restrictions are enforced as unbreakable mathematical filters before scoring begins; vegetarian members are guaranteed never to receive non-veg suggestions.
+- **Strict Dietary Isolation:** Dietary restrictions are enforced as deterministic filters before scoring begins; vegetarian members are strictly filtered to receive only veg-tagged suggestions.
 
 ---
 

@@ -125,7 +125,7 @@ CREATE INDEX IF NOT EXISTS idx_cart_items_session_id ON public.cart_items(sessio
 CREATE INDEX IF NOT EXISTS idx_cart_items_user_id ON public.cart_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_demo_orders_circle_id ON public.demo_orders(circle_id);
 
--- ROW LEVEL SECURITY (RLS) POLICIES
+-- Row Level Security & Hardened Policies
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.circles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.circle_members ENABLE ROW LEVEL SECURITY;
@@ -139,17 +139,16 @@ CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles
   FOR SELECT USING (true);
 
 CREATE POLICY "Users can insert their own profile" ON public.profiles
-  FOR INSERT WITH CHECK (auth.uid() = id);
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL AND auth.uid() = id);
 
 CREATE POLICY "Users can update their own profile" ON public.profiles
-  FOR UPDATE USING (auth.uid() = id);
+  FOR UPDATE USING (auth.uid() IS NOT NULL AND auth.uid() = id);
 
--- Circles: viewable by circle members or by invite_code lookup
-CREATE POLICY "Circles viewable by members or invite code" ON public.circles
+-- Circles: viewable by circle members or admin
+CREATE POLICY "Circles viewable by members or admin" ON public.circles
   FOR SELECT USING (
     auth.uid() = admin_id OR
-    EXISTS (SELECT 1 FROM public.circle_members WHERE circle_members.circle_id = circles.id AND circle_members.user_id = auth.uid()) OR
-    invite_code IS NOT NULL
+    EXISTS (SELECT 1 FROM public.circle_members WHERE circle_members.circle_id = circles.id AND circle_members.user_id = auth.uid())
   );
 
 CREATE POLICY "Authenticated users can create circles" ON public.circles
@@ -162,16 +161,47 @@ CREATE POLICY "Admins can update circles" ON public.circles
 CREATE POLICY "Members viewable by circle members" ON public.circle_members
   FOR SELECT USING (true);
 
-CREATE POLICY "Users can join circles" ON public.circle_members
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
 CREATE POLICY "Users can leave or admins can remove members" ON public.circle_members
   FOR DELETE USING (
     auth.uid() = user_id OR
     EXISTS (SELECT 1 FROM public.circles WHERE circles.id = circle_members.circle_id AND circles.admin_id = auth.uid())
   );
 
--- Ordering Sessions: viewable by circle members, manageable by circle admin
+-- Secure circle joining function
+CREATE OR REPLACE FUNCTION public.join_circle_with_invite_code(
+  p_circle_id UUID,
+  p_invite_code TEXT
+)
+RETURNS BOOLEAN
+SECURITY DEFINER
+SET search_path = public
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_circle_exists BOOLEAN;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Authentication required to join a circle';
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1 FROM public.circles
+    WHERE id = p_circle_id AND UPPER(invite_code) = UPPER(TRIM(p_invite_code))
+  ) INTO v_circle_exists;
+
+  IF NOT v_circle_exists THEN
+    RAISE EXCEPTION 'Invalid invite code or circle ID';
+  END IF;
+
+  INSERT INTO public.circle_members (circle_id, user_id, role)
+  VALUES (p_circle_id, auth.uid(), 'member')
+  ON CONFLICT (circle_id, user_id) DO NOTHING;
+
+  RETURN TRUE;
+END;
+$$;
+
+-- Ordering Sessions: viewable by circle members, manageable ONLY by circle admin
 CREATE POLICY "Sessions viewable by circle members" ON public.ordering_sessions
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.circle_members WHERE circle_members.circle_id = ordering_sessions.circle_id AND circle_members.user_id = auth.uid())
@@ -187,7 +217,7 @@ CREATE POLICY "Admins can update session status" ON public.ordering_sessions
     EXISTS (SELECT 1 FROM public.circles WHERE circles.id = ordering_sessions.circle_id AND circles.admin_id = auth.uid())
   );
 
--- Cart Items: viewable by session members, editable only by owner (unless locked)
+-- Cart Items: viewable by session members, editable only by item owner before cutoff
 CREATE POLICY "Cart items viewable by session members" ON public.cart_items
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.circle_members WHERE circle_members.circle_id = cart_items.circle_id AND circle_members.user_id = auth.uid())
@@ -196,27 +226,86 @@ CREATE POLICY "Cart items viewable by session members" ON public.cart_items
 CREATE POLICY "Users can insert their own cart items" ON public.cart_items
   FOR INSERT WITH CHECK (
     auth.uid() = user_id AND
-    EXISTS (SELECT 1 FROM public.ordering_sessions WHERE ordering_sessions.id = cart_items.session_id AND ordering_sessions.status = 'open')
+    EXISTS (SELECT 1 FROM public.circle_members WHERE circle_members.circle_id = cart_items.circle_id AND circle_members.user_id = auth.uid()) AND
+    EXISTS (
+      SELECT 1 FROM public.ordering_sessions
+      WHERE ordering_sessions.id = cart_items.session_id
+        AND ordering_sessions.circle_id = cart_items.circle_id
+        AND ordering_sessions.status = 'open'
+        AND (ordering_sessions.cutoff_time IS NULL OR ordering_sessions.cutoff_time > timezone('utc'::text, now()))
+    )
   );
 
 CREATE POLICY "Users can update their own cart items" ON public.cart_items
   FOR UPDATE USING (
     auth.uid() = user_id AND
-    EXISTS (SELECT 1 FROM public.ordering_sessions WHERE ordering_sessions.id = cart_items.session_id AND ordering_sessions.status = 'open')
+    EXISTS (SELECT 1 FROM public.circle_members WHERE circle_members.circle_id = cart_items.circle_id AND circle_members.user_id = auth.uid()) AND
+    EXISTS (
+      SELECT 1 FROM public.ordering_sessions
+      WHERE ordering_sessions.id = cart_items.session_id
+        AND ordering_sessions.circle_id = cart_items.circle_id
+        AND ordering_sessions.status = 'open'
+        AND (ordering_sessions.cutoff_time IS NULL OR ordering_sessions.cutoff_time > timezone('utc'::text, now()))
+    )
   );
 
 CREATE POLICY "Users can delete their own cart items" ON public.cart_items
   FOR DELETE USING (
-    auth.uid() = user_id AND
-    EXISTS (SELECT 1 FROM public.ordering_sessions WHERE ordering_sessions.id = cart_items.session_id AND ordering_sessions.status = 'open')
+    (auth.uid() = user_id OR EXISTS (
+      SELECT 1 FROM public.circles WHERE circles.id = cart_items.circle_id AND circles.admin_id = auth.uid()
+    )) AND
+    EXISTS (
+      SELECT 1 FROM public.ordering_sessions
+      WHERE ordering_sessions.id = cart_items.session_id
+        AND ordering_sessions.circle_id = cart_items.circle_id
+        AND ordering_sessions.status = 'open'
+        AND (ordering_sessions.cutoff_time IS NULL OR ordering_sessions.cutoff_time > timezone('utc'::text, now()))
+    )
   );
 
--- Demo Orders & Items: viewable by circle members
+-- Cutoff deadline trigger
+CREATE OR REPLACE FUNCTION public.check_session_deadline_trigger()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_session_status TEXT;
+  v_cutoff_time TIMESTAMPTZ;
+BEGIN
+  SELECT status, cutoff_time INTO v_session_status, v_cutoff_time
+  FROM public.ordering_sessions
+  WHERE id = COALESCE(NEW.session_id, OLD.session_id);
+
+  IF v_session_status IS NULL THEN
+    RAISE EXCEPTION 'Associated ordering session not found';
+  END IF;
+
+  IF v_session_status != 'open' THEN
+    RAISE EXCEPTION 'Cannot modify cart: ordering session is %', v_session_status;
+  END IF;
+
+  IF v_cutoff_time IS NOT NULL AND v_cutoff_time <= timezone('utc'::text, now()) THEN
+    RAISE EXCEPTION 'Cannot modify cart: order cutoff deadline % has expired', v_cutoff_time;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_check_cart_deadline ON public.cart_items;
+CREATE TRIGGER trg_check_cart_deadline
+BEFORE INSERT OR UPDATE ON public.cart_items
+FOR EACH ROW EXECUTE FUNCTION public.check_session_deadline_trigger();
+
+-- Demo Orders & Items
 CREATE POLICY "Demo orders viewable by circle members" ON public.demo_orders
   FOR SELECT USING (true);
 
-CREATE POLICY "Demo orders can be placed by admin" ON public.demo_orders
-  FOR INSERT WITH CHECK (true);
+CREATE POLICY "Demo orders can be placed by circle members" ON public.demo_orders
+  FOR INSERT WITH CHECK (
+    auth.uid() = placed_by_id AND
+    EXISTS (SELECT 1 FROM public.circle_members WHERE circle_members.circle_id = demo_orders.circle_id AND circle_members.user_id = auth.uid())
+  );
 
 CREATE POLICY "Demo order items viewable by all" ON public.demo_order_items
   FOR SELECT USING (true);

@@ -170,7 +170,7 @@ export function HeroSection() {
                   <div className="glass-pill px-4 py-2 rounded-2xl border-emerald-100 bg-emerald-50/50">
                     <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-tight flex items-center gap-1.5">
                       <TrendingDown className="w-3 h-3" />
-                      Free Delivery Unlocked!
+                      Group Delivery Fee Waived!
                     </p>
                   </div>
                 </div>
