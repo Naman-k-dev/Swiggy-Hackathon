@@ -136,7 +136,7 @@ export default function DashboardPage() {
             ) : (
               <>
                 <Database className="w-3.5 h-3.5 text-swiggy-orange" />
-                <span>Import Demo Data</span>
+                <span>{hasDemoData ? 'Re-import Demo Data' : 'Import Demo Data'}</span>
               </>
             )}
           </Button>
