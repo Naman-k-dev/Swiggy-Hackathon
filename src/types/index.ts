@@ -107,6 +107,7 @@ export interface CartItem {
   item_is_veg: boolean;
   quantity: number;
   customization?: string;
+  is_collected?: boolean;
   created_at: string;
   updated_at?: string;
 }
@@ -119,6 +120,7 @@ export interface MemberBreakdown {
   subtotal_paise: number;
   share_paise: number;
   items: CartItem[];
+  settlement_status?: 'pending' | 'sent' | 'confirmed';
 }
 
 export interface DemoOrderItem {
@@ -131,6 +133,7 @@ export interface DemoOrderItem {
   quantity: number;
   total_paise: number;
   is_veg: boolean;
+  is_collected?: boolean;
 }
 
 export interface DemoOrder {

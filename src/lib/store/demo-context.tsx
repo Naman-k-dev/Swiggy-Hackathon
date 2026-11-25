@@ -179,6 +179,11 @@ interface AppContextType {
   dismissRescueIssue: (issueId: string) => void;
   getJudgeDemoScenarios: (circleId: string) => Record<string, OrderRescueIssue>;
 
+  // Checkpoint 1: Campus Pickup Pass
+  markMealCollected: (orderId: string, itemId: string) => void;
+  // Checkpoint 1: CirclePay Settlement Tracker
+  updateSettlementStatus: (orderId: string, userId: string, newStatus: 'pending' | 'sent' | 'confirmed') => void;
+
   // Reset & Status
   isRealtimeConnected: boolean;
   isSupabaseActive: boolean;
@@ -1771,6 +1776,67 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [sessions, members, currentUser, cartItems]
   );
 
+  // Checkpoint 1: Campus Pickup Pass - Mark meal as collected
+  const markMealCollected = useCallback(
+    (orderId: string, itemId: string) => {
+      setDemoOrders((prev) => {
+        const updated = prev.map((order) => {
+          if (order.id !== orderId) return order;
+          const updatedBreakdowns = order.member_breakdowns.map((mb) => ({
+            ...mb,
+            items: mb.items.map((item) => {
+              if (item.id === itemId) {
+                return { ...item, is_collected: !(item as CartItem).is_collected };
+              }
+              return item;
+            }),
+          }));
+          return { ...order, member_breakdowns: updatedBreakdowns };
+        });
+        return updated;
+      });
+
+      analyticsService.trackEvent(
+        'meal_marked_collected',
+        '',
+        orderId,
+        currentUser.id,
+        { itemId },
+        'live_campus_pilot'
+      );
+    },
+    [currentUser]
+  );
+
+  // Checkpoint 1: CirclePay Settlement Tracker - Update settlement status
+  const updateSettlementStatus = useCallback(
+    (orderId: string, userId: string, newStatus: 'pending' | 'sent' | 'confirmed') => {
+      setDemoOrders((prev) => {
+        const updated = prev.map((order) => {
+          if (order.id !== orderId) return order;
+          const updatedBreakdowns = order.member_breakdowns.map((mb) => {
+            if (mb.user_id === userId) {
+              return { ...mb, settlement_status: newStatus };
+            }
+            return mb;
+          });
+          return { ...order, member_breakdowns: updatedBreakdowns };
+        });
+        return updated;
+      });
+
+      analyticsService.trackEvent(
+        newStatus === 'sent' ? 'settlement_marked_sent' : newStatus === 'confirmed' ? 'settlement_confirmed' : 'settlement_undone',
+        '',
+        orderId,
+        currentUser.id,
+        { targetUserId: userId, newStatus },
+        'live_campus_pilot'
+      );
+    },
+    [currentUser]
+  );
+
   // Reset demo data
   const resetDemoData = useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -1902,6 +1968,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       acceptRescueReplacement,
       dismissRescueIssue,
       getJudgeDemoScenarios,
+      // Checkpoint 1: Pickup & Settlement
+      markMealCollected,
+      updateSettlementStatus,
       theme,
       toggleTheme,
       addProfile,
@@ -1963,6 +2032,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       acceptRescueReplacement,
       dismissRescueIssue,
       getJudgeDemoScenarios,
+      markMealCollected,
+      updateSettlementStatus,
       theme,
       toggleTheme,
       addProfile,

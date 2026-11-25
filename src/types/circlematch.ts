@@ -107,7 +107,12 @@ export type AnalyticsEventType =
   | 'order_rescue_triggered'
   | 'order_rescue_recommendation_shown'
   | 'order_rescue_accepted'
-  | 'order_rescue_declined';
+  | 'order_rescue_declined'
+  | 'meal_marked_collected'
+  | 'settlement_status_updated'
+  | 'settlement_marked_sent'
+  | 'settlement_confirmed'
+  | 'settlement_undone';
 
 export type EventSource = 'live_campus_pilot' | 'seeded_baseline';
 
