@@ -17,6 +17,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { formatPaise } from '@/lib/utils';
 import { OrderStatus } from '@/types';
+import { PickupPassCard } from '@/components/orders/PickupPassCard';
+import { CirclePayTracker } from '@/components/orders/CirclePayTracker';
 
 interface OrderPageProps {
   params: Promise<{
@@ -30,8 +32,12 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
   const circleId = resolvedParams.id;
   const orderId = resolvedParams.orderId;
 
-  const { getOrder, currentUser } = useApp();
+  const { getOrder, currentUser, getCircle } = useApp();
   const order = getOrder(orderId);
+  const circle = getCircle(circleId);
+
+  // Check if current user is admin (organizer) of the circle
+  const isAdmin = circle?.admin_id === currentUser.id || order?.placed_by_id === currentUser.id;
 
   // Simulated status progression
   const [currentStatus, setCurrentStatus] = useState<OrderStatus>(order?.status || 'placed');
@@ -307,6 +313,30 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
           </div>
         </div>
       </div>
+
+      {/* 5. Campus Pickup Pass */}
+      {currentStatus === 'delivered' && (
+        <PickupPassCard
+          order={order}
+          currentUser={currentUser}
+          isAdmin={isAdmin}
+          onMarkMealCollected={(itemId) => {
+            // This will be implemented in demo-context
+            console.log('Mark meal collected:', itemId);
+          }}
+        />
+      )}
+
+      {/* 6. CirclePay Settlement Tracker */}
+      <CirclePayTracker
+        order={order}
+        currentUser={currentUser}
+        isAdmin={isAdmin}
+        onUpdateSettlementStatus={(userId, newStatus) => {
+          // This will be implemented in demo-context
+          console.log('Update settlement:', userId, newStatus);
+        }}
+      />
     </div>
   );
 }
