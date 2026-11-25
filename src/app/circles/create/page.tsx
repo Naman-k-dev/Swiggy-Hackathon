@@ -12,7 +12,13 @@ import confetti from 'canvas-confetti';
 
 export default function CreateCirclePage() {
   const router = useRouter();
-  const { createCircle, currentUser } = useApp();
+  const { createCircle, currentUser, isAuthenticated } = useApp();
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/auth');
+    }
+  }, [isAuthenticated, router]);
 
   const [name, setName] = useState('');
   const [type, setType] = useState<CircleType>('Classmates');
@@ -119,7 +125,7 @@ export default function CreateCirclePage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. CSE Lunch Squad, Hostel 3 West Wing, Roboclub Foodies"
-                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
+                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-charcoal-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
                 required
               />
             </div>
@@ -156,7 +162,7 @@ export default function CreateCirclePage() {
                 type="text"
                 value={college}
                 onChange={(e) => setCollege(e.target.value)}
-                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
+                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-charcoal-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
                 required
               />
             </div>
@@ -171,7 +177,7 @@ export default function CreateCirclePage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Daily lunch after 12:30 PM lab, late-night hackathon fuel, exam week snacks..."
                 rows={3}
-                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
+                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-charcoal-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
               />
             </div>
 

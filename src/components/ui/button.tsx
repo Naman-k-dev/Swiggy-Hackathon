@@ -28,15 +28,15 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       primary:
         "bg-swiggy-orange text-white hover:bg-swiggy-hover shadow-sm hover:shadow",
       secondary:
-        "bg-charcoal-900 text-white hover:bg-charcoal-800 shadow-sm",
+        "bg-charcoal-900 dark:bg-slate-800 text-white hover:bg-charcoal-800 dark:hover:bg-slate-700 shadow-sm",
       outline:
         "border border-charcoal-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 text-charcoal-800 dark:text-slate-200 hover:bg-charcoal-50 dark:hover:bg-slate-800 hover:border-charcoal-300 dark:hover:border-slate-600",
       ghost:
-        "text-charcoal-700 hover:bg-charcoal-100/70 hover:text-charcoal-900",
+        "text-charcoal-700 dark:text-slate-300 hover:bg-charcoal-100/70 dark:hover:bg-slate-800 hover:text-charcoal-900 dark:hover:text-white",
       danger:
         "bg-red-500 text-white hover:bg-red-600 shadow-sm",
       soft:
-        "bg-swiggy-light text-swiggy-orange hover:bg-swiggy-soft font-semibold",
+        "bg-swiggy-light dark:bg-orange-500/20 text-swiggy-orange dark:text-orange-300 hover:bg-swiggy-soft dark:hover:bg-orange-500/30 font-semibold",
     };
 
     const sizes = {

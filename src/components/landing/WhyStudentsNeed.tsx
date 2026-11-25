@@ -18,10 +18,10 @@ export function WhyStudentsNeed() {
       icon: IndianRupee,
     },
     {
-      pain: 'Multiple ₹40 delivery charges',
-      painSub: 'Four students in adjacent hostel rooms paying ₹160 in separate delivery and handling fees.',
+      pain: 'Multiple ₹30–₹40 delivery charges',
+      painSub: 'Four students in adjacent hostel rooms paying ₹120–₹160 in separate delivery and handling fees.',
       solution: 'Single shared delivery to campus gate',
-      solutionSub: 'Reach the ₹400 group cart threshold to waive delivery fees and pool restaurant promotions.',
+      solutionSub: 'Reach the ₹400 group cart threshold to waive our ₹30 delivery fee and pool restaurant promotions.',
       icon: Truck,
     },
     {

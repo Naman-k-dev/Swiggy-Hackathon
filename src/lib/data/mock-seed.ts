@@ -1,4 +1,13 @@
-import { Circle, CircleMember, OrderingSession, CartItem, StudentProfile, DemoOrder } from '@/types';
+import {
+  Circle,
+  CircleMember,
+  OrderingSession,
+  CartItem,
+  StudentProfile,
+  DemoOrder,
+  RecurringMealWindow,
+  CircleVoteSession,
+} from '@/types';
 
 export const DEFAULT_CAMPUS_NAME =
   process.env.NEXT_PUBLIC_CAMPUS_NAME || 'PW Institute of Innovation Noida';
@@ -6,8 +15,8 @@ export const DEFAULT_CAMPUS_NAME =
 export const DEMO_PERSONAS: StudentProfile[] = [
   {
     id: 'student-demo-1',
-    full_name: 'Campus Member',
-    email: 'member@campus.edu',
+    full_name: 'Circle Lead (Demo Admin)',
+    email: 'lead.demo@campus.edu',
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     college: DEFAULT_CAMPUS_NAME,
     academic_year: '3rd Year B.Tech CSE',
@@ -16,13 +25,33 @@ export const DEMO_PERSONAS: StudentProfile[] = [
   },
   {
     id: 'student-demo-2',
-    full_name: 'Hostel Mate',
-    email: 'mate@campus.edu',
+    full_name: 'Ananya K. (Veg Demo)',
+    email: 'ananya.demo@campus.edu',
     avatar_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
     college: DEFAULT_CAMPUS_NAME,
     academic_year: '3rd Year B.Tech CSE',
     dietary_pref: 'VEG',
     preferred_budget: 180,
+  },
+  {
+    id: 'student-demo-3',
+    full_name: 'Rohan M. (Hostel Demo)',
+    email: 'rohan.demo@campus.edu',
+    avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    college: DEFAULT_CAMPUS_NAME,
+    academic_year: '3rd Year B.Tech CSE',
+    dietary_pref: 'NON_VEG',
+    preferred_budget: 220,
+  },
+  {
+    id: 'student-demo-4',
+    full_name: 'Priya N. (Budget Veg)',
+    email: 'priya.demo@campus.edu',
+    avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    college: DEFAULT_CAMPUS_NAME,
+    academic_year: '2nd Year B.Tech ECE',
+    dietary_pref: 'VEG',
+    preferred_budget: 160,
   },
 ];
 
@@ -109,6 +138,37 @@ export const INITIAL_CIRCLE_MEMBERS: CircleMember[] = [
   },
 ];
 
+export const INITIAL_MEAL_WINDOWS: RecurringMealWindow[] = [
+  {
+    id: 'mw-cse-lunch',
+    circle_id: 'circle-cse-lunch-squad',
+    meal_type: 'Lunch',
+    title: 'CSE Daily Post-Lab Lunch',
+    target_time: '13:15',
+    cutoff_minutes_before: 30,
+    recurrence: 'weekdays',
+    preferred_restaurant_id: 'rest-rolls-bowls',
+    preferred_restaurant_name: 'Rolls & Bowls Co.',
+    pickup_point: 'Academic Block 1 - Main Portico',
+    active: true,
+    created_at: new Date(Date.now() - 7 * 86400000).toISOString(),
+  },
+  {
+    id: 'mw-hostel-dinner',
+    circle_id: 'circle-hostel-block-c',
+    meal_type: 'Dinner',
+    title: 'Hostel Block C Late Night Dinner',
+    target_time: '20:30',
+    cutoff_minutes_before: 45,
+    recurrence: 'daily',
+    preferred_restaurant_id: 'rest-night-canteen',
+    preferred_restaurant_name: 'Night Canteen Specials',
+    pickup_point: 'Hostel Block C - Ground Floor Reception',
+    active: true,
+    created_at: new Date(Date.now() - 14 * 86400000).toISOString(),
+  },
+];
+
 export const INITIAL_SESSIONS: OrderingSession[] = [
   {
     id: 'sess-cse-active',
@@ -120,6 +180,33 @@ export const INITIAL_SESSIONS: OrderingSession[] = [
     status: 'open',
     cutoff_time: new Date(Date.now() + 45 * 60000).toISOString(),
     delivery_location: 'Hostel Block C - Ground Floor Reception',
+    pickup_note: 'Academic Block 1 - Main Portico',
+    meal_type: 'Lunch',
+    session_name: 'CSE Daily Post-Lab Lunch',
+    recurrence: 'weekdays',
+    ready_member_ids: ['student-demo-1', 'student-demo-2'],
+    participations: {
+      'student-demo-1': {
+        user_id: 'student-demo-1',
+        status: 'joining',
+        updated_at: new Date(Date.now() - 15 * 60000).toISOString(),
+      },
+      'student-demo-2': {
+        user_id: 'student-demo-2',
+        status: 'joining',
+        updated_at: new Date(Date.now() - 14 * 60000).toISOString(),
+      },
+      'student-demo-3': {
+        user_id: 'student-demo-3',
+        status: 'joining',
+        updated_at: new Date(Date.now() - 12 * 60000).toISOString(),
+      },
+      'student-demo-4': {
+        user_id: 'student-demo-4',
+        status: 'skipped',
+        updated_at: new Date(Date.now() - 10 * 60000).toISOString(),
+      },
+    },
     created_at: new Date(Date.now() - 15 * 60000).toISOString(),
   },
 ];
@@ -130,7 +217,7 @@ export const INITIAL_CART_ITEMS: CartItem[] = [
     session_id: 'sess-cse-active',
     circle_id: 'circle-cse-lunch-squad',
     user_id: 'student-demo-1',
-    user_name: 'Circle Admin',
+    user_name: 'Circle Lead (Demo Admin)',
     user_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     item_id: 'dish-paneer-roll',
     item_name: 'Double Paneer Kathi Roll',
@@ -145,7 +232,7 @@ export const INITIAL_CART_ITEMS: CartItem[] = [
     session_id: 'sess-cse-active',
     circle_id: 'circle-cse-lunch-squad',
     user_id: 'student-demo-2',
-    user_name: 'Campus Peer',
+    user_name: 'Ananya K. (Veg Demo)',
     user_avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
     item_id: 'dish-mexican-bowl',
     item_name: 'Fiesta Veg Burrito Bowl',
@@ -160,7 +247,7 @@ export const INITIAL_CART_ITEMS: CartItem[] = [
     session_id: 'sess-cse-active',
     circle_id: 'circle-cse-lunch-squad',
     user_id: 'student-demo-3',
-    user_name: 'Hostel Roommate',
+    user_name: 'Rohan M. (Hostel Demo)',
     user_avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     item_id: 'dish-chicken-roll',
     item_name: 'Butter Chicken Loaded Roll',
@@ -180,11 +267,11 @@ export const INITIAL_DEMO_ORDERS: DemoOrder[] = [
     circle_name: 'CSE Lunch Squad',
     session_id: 'sess-cse-past',
     placed_by_id: 'student-demo-1',
-    placed_by_name: 'Circle Admin',
+    placed_by_name: 'Circle Lead (Demo Admin)',
     restaurant_name: 'Biryani Central',
     restaurant_id: 'rest-biryani-central',
     subtotal_paise: 64700, // ₹647
-    delivery_fee_paise: 0, // Waived on circle order!
+    delivery_fee_paise: 0, // Waived on circle order above ₹400!
     platform_fee_paise: 500, // ₹5
     discount_paise: 5000, // ₹50 circle discount
     total_paise: 60200, // ₹602
@@ -196,36 +283,158 @@ export const INITIAL_DEMO_ORDERS: DemoOrder[] = [
     member_breakdowns: [
       {
         user_id: 'student-demo-1',
-        user_name: 'Circle Admin',
+        user_name: 'Circle Lead (Demo Admin)',
         user_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
         items_count: 1,
         subtotal_paise: 23900,
-        share_paise: 22200,
-        items: [],
+        share_paise: 22400,
+        items: [
+          {
+            id: 'past-ci-1',
+            session_id: 'sess-cse-past',
+            circle_id: 'circle-cse-lunch-squad',
+            user_id: 'student-demo-1',
+            user_name: 'Circle Lead (Demo Admin)',
+            user_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+            item_id: 'dish-chicken-dum-biryani',
+            item_name: 'Hyderabadi Chicken Dum Biryani (Single)',
+            item_price_paise: 23900,
+            item_is_veg: false,
+            quantity: 1,
+            created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+          },
+        ],
       },
       {
         user_id: 'student-demo-2',
-        user_name: 'Campus Peer',
+        user_name: 'Ananya K. (Veg Demo)',
         user_avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
         items_count: 1,
         subtotal_paise: 21900,
         share_paise: 20400,
-        items: [],
+        items: [
+          {
+            id: 'past-ci-2',
+            session_id: 'sess-cse-past',
+            circle_id: 'circle-cse-lunch-squad',
+            user_id: 'student-demo-2',
+            user_name: 'Ananya K. (Veg Demo)',
+            user_avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+            item_id: 'dish-paneer-biryani',
+            item_name: 'Subz Shahi Paneer Dum Biryani',
+            item_price_paise: 21900,
+            item_is_veg: true,
+            quantity: 1,
+            created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+          },
+        ],
       },
       {
         user_id: 'student-demo-3',
-        user_name: 'Hostel Roommate',
+        user_name: 'Rohan M. (Hostel Demo)',
         user_avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
         items_count: 1,
         subtotal_paise: 18900,
-        share_paise: 17600,
-        items: [],
+        share_paise: 17400,
+        items: [
+          {
+            id: 'past-ci-3',
+            session_id: 'sess-cse-past',
+            circle_id: 'circle-cse-lunch-squad',
+            user_id: 'student-demo-3',
+            user_name: 'Rohan M. (Hostel Demo)',
+            user_avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+            item_id: 'dish-egg-dum-biryani',
+            item_name: 'Spiced Double Egg Dum Biryani',
+            item_price_paise: 18900,
+            item_is_veg: false,
+            quantity: 1,
+            created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+          },
+        ],
       },
     ],
   },
 ];
 
-import { RecurringMealWindow, CircleVoteSession } from '@/types';
-
-export const INITIAL_MEAL_WINDOWS: RecurringMealWindow[] = [];
-export const INITIAL_VOTE_SESSIONS: CircleVoteSession[] = [];
+export const INITIAL_VOTE_SESSIONS: CircleVoteSession[] = [
+  {
+    id: 'vote-cse-lunch-today',
+    circle_id: 'circle-cse-lunch-squad',
+    meal_session_id: 'sess-cse-active',
+    created_by: 'student-demo-1',
+    title: 'CSE Squad Lunch Decision Room',
+    status: 'active',
+    cutoff_time: new Date(Date.now() + 18 * 60000).toISOString(),
+    options: [
+      {
+        id: 'opt-cse-1',
+        restaurant_id: 'rest-rolls-bowls',
+        restaurant_name: 'Rolls & Bowls Co.',
+        restaurant_image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80',
+        cuisine: ['Rolls', 'North Indian', 'Bowls'],
+        price_range_text: '₹149–₹239 per person',
+        group_compatibility_score: 92,
+        estimated_group_subtotal_paise: 58000,
+        dietary_summary: 'Strictly verified: 4 vegetarian options including Paneer Kathi Roll & Rajma Bowl',
+        budget_summary: '100% of participants have options within their budget limit',
+        source: 'circlematch_ai',
+        vote_count: 1,
+        voter_user_ids: ['student-demo-1'],
+      },
+      {
+        id: 'opt-cse-2',
+        restaurant_id: 'rest-madras-tiffin',
+        restaurant_name: 'Madras Tiffin Room',
+        restaurant_image: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&auto=format&fit=crop&q=80',
+        cuisine: ['South Indian', 'Pure Veg', 'Breakfast'],
+        price_range_text: '₹89–₹129 per person',
+        group_compatibility_score: 95,
+        estimated_group_subtotal_paise: 48000,
+        dietary_summary: 'Pure veg campus canteen favorite; satisfies Ananya & Priya with zero cross-risk',
+        budget_summary: 'Budget-friendly meals under ₹130 for all 4 members',
+        source: 'campus_catalog',
+        vote_count: 1,
+        voter_user_ids: ['student-demo-2'],
+      },
+      {
+        id: 'opt-cse-3',
+        restaurant_id: 'rest-biryani-central',
+        restaurant_name: 'Biryani Central',
+        restaurant_image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80',
+        cuisine: ['Biryani', 'Hyderabadi', 'Mughlai'],
+        price_range_text: '₹189–₹239 per person',
+        group_compatibility_score: 84,
+        estimated_group_subtotal_paise: 64700,
+        dietary_summary: 'Includes Subz Shahi Paneer Dum Biryani alongside Hyderabadi classics',
+        budget_summary: 'Slightly higher price point; great for group ₹50 discount pool',
+        source: 'campus_catalog',
+        vote_count: 0,
+        voter_user_ids: [],
+      },
+    ],
+    votes: {
+      'student-demo-1': {
+        id: 'v-demo-1',
+        session_id: 'vote-cse-lunch-today',
+        option_id: 'opt-cse-1',
+        user_id: 'student-demo-1',
+        user_name: 'Circle Lead (Demo Admin)',
+        user_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        voted_at: new Date(Date.now() - 5 * 60000).toISOString(),
+      },
+      'student-demo-2': {
+        id: 'v-demo-2',
+        session_id: 'vote-cse-lunch-today',
+        option_id: 'opt-cse-2',
+        user_id: 'student-demo-2',
+        user_name: 'Ananya K. (Veg Demo)',
+        user_avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+        voted_at: new Date(Date.now() - 3 * 60000).toISOString(),
+      },
+    },
+    ai_summary: 'Decision Room active: 2 of 4 votes recorded. Madras Tiffin Room leads on tie-break with 95% group compatibility.',
+    created_at: new Date(Date.now() - 10 * 60000).toISOString(),
+    updated_at: new Date(Date.now() - 3 * 60000).toISOString(),
+  },
+];

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { use, useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/store/demo-context';
 import {
   CheckCircle2,
@@ -26,12 +27,19 @@ interface OrderPageProps {
 }
 
 export default function OrderTrackingPage({ params }: OrderPageProps) {
+  const router = useRouter();
   const resolvedParams = use(params);
   const circleId = resolvedParams.id;
   const orderId = resolvedParams.orderId;
 
-  const { getOrder, currentUser } = useApp();
+  const { getOrder, currentUser, isAuthenticated } = useApp();
   const order = getOrder(orderId);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/auth');
+    }
+  }, [isAuthenticated, router]);
 
   // Simulated status progression
   const [currentStatus, setCurrentStatus] = useState<OrderStatus>(order?.status || 'placed');
@@ -51,10 +59,12 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
     setCurrentStatus(timelineSteps[nextIndex].key);
   };
 
+  if (!isAuthenticated) return null;
+
   if (!order) {
     return (
       <div className="max-w-md mx-auto py-20 text-center space-y-4">
-        <h2 className="text-xl font-bold">Order Not Found</h2>
+        <h2 className="text-xl font-bold text-charcoal-900 dark:text-white">Order Not Found</h2>
         <p className="text-xs text-charcoal-500 dark:text-slate-400">
           The order #{orderId} could not be located in this session.
         </p>
@@ -71,7 +81,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
       <div>
         <Link
           href={`/circles/${circleId}`}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-charcoal-500 dark:text-slate-400 hover:text-charcoal-900 dark:text-white mb-2 transition"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-charcoal-500 dark:text-slate-400 hover:text-charcoal-900 dark:hover:text-white mb-2 transition"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to {order.circle_name}
@@ -79,10 +89,10 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
       </div>
 
       {/* 1. Confirmation Hero Card */}
-      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
+      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-charcoal-100 dark:border-slate-800">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <div>
@@ -103,8 +113,8 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
           </div>
 
           {/* Prototype Demo Warning Badge */}
-          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-900 px-3 py-1.5 rounded-2xl text-xs font-semibold">
-            <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 px-3 py-1.5 rounded-2xl text-xs font-semibold">
+            <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
             <span>Demo Order — No Payment Taken</span>
           </div>
         </div>
@@ -121,7 +131,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
               variant="outline"
               size="sm"
               onClick={advanceStatus}
-              className="text-xs font-bold border-orange-200 text-swiggy-dark bg-swiggy-light/50 hover:bg-swiggy-light"
+              className="text-xs font-bold border-orange-200 dark:border-orange-500/40 text-swiggy-dark dark:text-orange-300 bg-swiggy-light/50 dark:bg-orange-950/30 hover:bg-swiggy-light dark:hover:bg-orange-950/50"
               title="Click to advance status for judging simulation"
             >
               <Sparkles className="w-3.5 h-3.5 text-swiggy-orange mr-1" />
@@ -140,10 +150,10 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
                   key={step.key}
                   className={`p-3.5 rounded-2xl border text-center transition flex flex-col items-center justify-between gap-2 ${
                     isCurrent
-                      ? 'border-swiggy-orange bg-swiggy-light/60 shadow-sm ring-1 ring-orange-300'
+                      ? 'border-swiggy-orange bg-swiggy-light/60 dark:bg-orange-950/30 shadow-sm ring-1 ring-orange-300 dark:ring-orange-500/50 text-charcoal-900 dark:text-white'
                       : isPast
-                      ? 'border-emerald-200 bg-emerald-50/50 text-emerald-950'
-                      : 'border-charcoal-100 dark:border-slate-800 bg-charcoal-50 dark:bg-slate-800/60 opacity-60'
+                      ? 'border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/50 dark:bg-emerald-950/25 text-emerald-950 dark:text-emerald-100'
+                      : 'border-charcoal-100 dark:border-slate-800 bg-charcoal-50 dark:bg-slate-800/60 text-charcoal-700 dark:text-slate-300 opacity-60'
                   }`}
                 >
                   <div
@@ -152,7 +162,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
                         ? 'bg-swiggy-orange text-white animate-pulse'
                         : isPast
                         ? 'bg-emerald-600 text-white'
-                        : 'bg-charcoal-200 text-charcoal-500 dark:text-slate-400'
+                        : 'bg-charcoal-200 dark:bg-slate-700 text-charcoal-500 dark:text-slate-300'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -203,7 +213,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
       {/* 4. Member Contributions & Bill Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left: Per Member Individual Contributions */}
-        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-6 shadow-sm space-y-4">
+        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 p-6 shadow-sm space-y-4">
           <h3 className="font-extrabold text-base text-charcoal-900 dark:text-white flex items-center justify-between">
             <span>Member-wise Breakdown</span>
             <span className="text-xs font-semibold text-charcoal-500 dark:text-slate-400">
@@ -219,8 +229,8 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
                   key={member.user_id}
                   className={`p-3 rounded-2xl border flex items-center justify-between text-xs ${
                     isYou
-                      ? 'border-orange-200 bg-orange-50/40 font-semibold'
-                      : 'border-charcoal-100 dark:border-slate-800 bg-[#FAFAF8]'
+                      ? 'border-orange-200 dark:border-orange-500/40 bg-orange-50/40 dark:bg-orange-950/20 font-semibold'
+                      : 'border-charcoal-100 dark:border-slate-800 bg-[#FAFAF8] dark:bg-slate-800/60'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
@@ -262,7 +272,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
         </div>
 
         {/* Right: Full Financial Summary */}
-        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-6 shadow-sm space-y-4">
+        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 p-6 shadow-sm space-y-4">
           <h3 className="font-extrabold text-base text-charcoal-900 dark:text-white">
             Order Total & Savings
           </h3>

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { User } from '@supabase/supabase-js';
 import {
   StudentProfile,
   Circle,
@@ -33,7 +34,31 @@ import {
 import { DEMO_RESTAURANTS } from '@/lib/data/mock-restaurants';
 import { generateInviteCode, calculateMemberSplit } from '@/lib/utils';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import {
+  SupabaseSchemaStatus,
+  isUuid,
+  createCloudId,
+  checkCloudSchemaReadiness,
+  upsertCloudProfile,
+  fetchUserCloudState,
+  createCloudCircle,
+  joinCloudCircleByInvite,
+  lookupCloudCircleByInvite,
+  upsertCloudSession,
+  upsertCloudCartItem,
+  deleteCloudCartItem,
+  insertCloudDemoOrder,
+  insertCloudMealWindow,
+  upsertCloudVoteSession,
+  upsertCloudVote,
+  upsertCloudRescueIssue,
+} from '@/lib/supabase/cloud-sync';
 import { analyticsService } from '@/lib/analytics/analytics-service';
+import {
+  canManageSession,
+  canModifyCartItem,
+  canJoinCircle,
+} from '@/lib/security/authorization';
 import {
   createVoteSession,
   castVote,
@@ -50,19 +75,41 @@ export const GUEST_USER: StudentProfile = {
   full_name: 'Guest User',
   email: 'guest@campus.edu',
   avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Guest',
-  college: 'Select Campus',
+  college: DEFAULT_CAMPUS_NAME,
   academic_year: 'Student',
   dietary_pref: 'BOTH',
   preferred_budget: 250,
 };
 
+export const DEMO_PRESETS_ENABLED =
+  process.env.NEXT_PUBLIC_ENABLE_DEMO_PRESETS !== 'false';
+
+function normalizeDietaryPref(pref?: string): StudentProfile['dietary_pref'] {
+  if (!pref) return 'BOTH';
+  const upper = pref.toUpperCase();
+  if (upper === 'VEG') return 'VEG';
+  if (upper === 'NON_VEG' || upper === 'NON-VEG') return 'NON_VEG';
+  return 'BOTH';
+}
+
 interface AppContextType {
   // Current user & personas
   currentUser: StudentProfile;
   isAuthenticated: boolean;
+  isDemoMode: boolean;
+  supabaseSchemaStatus: SupabaseSchemaStatus;
   logout: () => void;
   personas: StudentProfile[];
   switchPersona: (personaId: string) => void;
+  signInWithSupabaseUser: (
+    user: User,
+    overrides?: {
+      full_name?: string;
+      college?: string;
+      dietary_preference?: 'veg' | 'non-veg' | 'flexible';
+      preferred_budget?: number;
+    }
+  ) => Promise<void>;
   updateProfile: (data: Partial<StudentProfile>) => void;
 
   // Circles
@@ -77,7 +124,8 @@ interface AppContextType {
   }) => Circle;
   getCircle: (circleId: string) => Circle | undefined;
   getCircleByInviteCode: (code: string) => Circle | undefined;
-  joinCircle: (circleId: string) => { success: boolean; message: string };
+  resolveInviteCode: (code: string) => Promise<Circle | undefined>;
+  joinCircle: (circleId: string, inviteCode?: string) => Promise<{ success: boolean; message: string }>;
   getUserCircles: () => Circle[];
 
   // Members
@@ -170,7 +218,12 @@ interface AppContextType {
     scenario: OrderRescueScenario,
     originalDish: { id: string; name: string; price_paise: number },
     customReason?: string,
-    isDemo?: boolean
+    isDemo?: boolean,
+    options?: {
+      circleId?: string;
+      affectedUser?: StudentProfile;
+      restaurantId?: string;
+    }
   ) => OrderRescueIssue;
   acceptRescueReplacement: (
     issue: OrderRescueIssue,
@@ -200,6 +253,7 @@ interface AppContextType {
 const STORAGE_KEYS = {
   USER: 'scc_current_user_v1',
   PERSONAS: 'scc_personas_v1',
+  DEMO_MODE: 'scc_demo_mode_v1',
   CIRCLES: 'scc_circles_v1',
   MEMBERS: 'scc_members_v1',
   SESSIONS: 'scc_sessions_v1',
@@ -214,37 +268,13 @@ const STORAGE_KEYS = {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  // State
-  const [currentUser, setCurrentUser] = useState<StudentProfile>(() => {
-    if (typeof window === 'undefined') return GUEST_USER;
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.USER);
-      if (stored) return JSON.parse(stored);
-    } catch {}
-    return GUEST_USER;
-  });
-
-  const isAuthenticated = currentUser.id !== 'student-guest';
-
-  const logout = useCallback(() => {
-    setCurrentUser(GUEST_USER);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.removeItem(STORAGE_KEYS.USER);
-      } catch {}
-    }
-    if (isSupabaseConfigured && supabase) {
-      supabase.auth.signOut().catch(() => {});
-    }
-  }, []);
-  const [personas, setPersonas] = useState<StudentProfile[]>(() => {
-    if (typeof window === 'undefined') return DEMO_PERSONAS;
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.PERSONAS);
-      if (stored) return JSON.parse(stored);
-    } catch {}
-    return DEMO_PERSONAS;
-  });
+  const [currentUser, setCurrentUser] = useState<StudentProfile>(GUEST_USER);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
+  const [supabaseSchemaStatus, setSupabaseSchemaStatus] = useState<SupabaseSchemaStatus>(
+    isSupabaseConfigured ? 'checking' : 'disabled'
+  );
+  const [cloudProfiles, setCloudProfiles] = useState<Map<string, StudentProfile>>(new Map());
+  const [personas, setPersonas] = useState<StudentProfile[]>(DEMO_PERSONAS);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window === 'undefined') return 'light';
@@ -271,101 +301,217 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   }, []);
 
-  const addProfile = useCallback(
-    (data: {
-      full_name: string;
-      college: string;
-      avatar_url?: string;
-      dietary_preference?: 'veg' | 'non-veg' | 'flexible';
-      preferred_budget?: number;
-    }) => {
-      const newId = `student-custom-${Date.now()}`;
-      const newProfile: StudentProfile = {
-        id: newId,
-        full_name: data.full_name,
-        email: `${data.full_name.toLowerCase().replace(/\s+/g, '')}@campus.edu`,
-        avatar_url: data.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.full_name)}`,
-        college: data.college,
-        academic_year: 'Student',
-        dietary_pref: data.dietary_preference === 'veg' ? 'VEG' : data.dietary_preference === 'non-veg' ? 'NON_VEG' : 'BOTH',
-        preferred_budget: data.preferred_budget || 250,
-        updated_at: new Date().toISOString(),
-      };
-
-      setPersonas((prev) => {
-        const updated = [...prev, newProfile];
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem(STORAGE_KEYS.PERSONAS, JSON.stringify(updated));
-          } catch {}
-        }
-        return updated;
-      });
-
-      setCurrentUser(newProfile);
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(newProfile));
-        } catch {}
-      }
-    },
-    []
-  );
-
-  const [circles, setCircles] = useState<Circle[]>(INITIAL_CIRCLES);
-  const [members, setMembers] = useState<CircleMember[]>(INITIAL_CIRCLE_MEMBERS);
-  const [sessions, setSessions] = useState<OrderingSession[]>(INITIAL_SESSIONS);
-  const [cartItems, setCartItems] = useState<CartItem[]>(INITIAL_CART_ITEMS);
-  const [demoOrders, setDemoOrders] = useState<DemoOrder[]>(INITIAL_DEMO_ORDERS);
-  const [mealWindows, setMealWindows] = useState<RecurringMealWindow[]>(INITIAL_MEAL_WINDOWS);
-  const [voteSessions, setVoteSessions] = useState<CircleVoteSession[]>(INITIAL_VOTE_SESSIONS);
+  const [circles, setCircles] = useState<Circle[]>([]);
+  const [members, setMembers] = useState<CircleMember[]>([]);
+  const [sessions, setSessions] = useState<OrderingSession[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [demoOrders, setDemoOrders] = useState<DemoOrder[]>([]);
+  const [mealWindows, setMealWindows] = useState<RecurringMealWindow[]>([]);
+  const [voteSessions, setVoteSessions] = useState<CircleVoteSession[]>([]);
   const [activeRescueIssue, setActiveRescueIssue] = useState<OrderRescueIssue | null>(null);
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(true);
   const [mounted, setMounted] = useState(false);
 
-  // Initialize from LocalStorage if available
-  useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
-      const storedCircles = localStorage.getItem(STORAGE_KEYS.CIRCLES);
-      const storedMembers = localStorage.getItem(STORAGE_KEYS.MEMBERS);
-      const storedSessions = localStorage.getItem(STORAGE_KEYS.SESSIONS);
-      const storedCart = localStorage.getItem(STORAGE_KEYS.CART);
-      const storedOrders = localStorage.getItem(STORAGE_KEYS.ORDERS);
-      const storedMealWindows = localStorage.getItem(STORAGE_KEYS.MEAL_WINDOWS);
-      const storedVoteSessions = localStorage.getItem(STORAGE_KEYS.VOTE_SESSIONS);
-      const storedRescue = localStorage.getItem(STORAGE_KEYS.RESCUE_ISSUE);
+  const isAuthenticated = currentUser.id !== 'student-guest';
+  const useCloudPersistence =
+    isSupabaseConfigured &&
+    supabaseSchemaStatus === 'ready' &&
+    isUuid(currentUser.id) &&
+    !isDemoMode;
 
-      if (storedUser) {
-        const parsed = JSON.parse(storedUser);
-        if (parsed.college === 'BITS Pilani - Hyderabad Campus') {
-          parsed.college = DEFAULT_CAMPUS_NAME;
-        }
-        setCurrentUser(parsed);
-      }
-      if (storedCircles) {
-        const parsedCircles: Circle[] = JSON.parse(storedCircles);
-        const updatedCircles = parsedCircles.map((c) =>
-          c.college === 'BITS Pilani - Hyderabad Campus'
-            ? { ...c, college: DEFAULT_CAMPUS_NAME }
-            : c
-        );
-        setCircles(updatedCircles);
-      }
-      if (storedMembers) setMembers(JSON.parse(storedMembers));
-      if (storedSessions) setSessions(JSON.parse(storedSessions));
-      if (storedCart) setCartItems(JSON.parse(storedCart));
-      if (storedOrders) setDemoOrders(JSON.parse(storedOrders));
-      if (storedMealWindows) setMealWindows(JSON.parse(storedMealWindows));
-      if (storedVoteSessions) setVoteSessions(JSON.parse(storedVoteSessions));
-      if (storedRescue) setActiveRescueIssue(JSON.parse(storedRescue));
-    } catch {
-      // localStorage read fallback
+  const hydrateFromCloud = useCallback(async (userId: string) => {
+    const cloud = await fetchUserCloudState(userId);
+    if (!cloud) {
+      const status = await checkCloudSchemaReadiness();
+      setSupabaseSchemaStatus(status);
+      return;
     }
-    setMounted(true);
+
+    setSupabaseSchemaStatus(cloud.schemaStatus);
+    if (cloud.schemaStatus === 'ready') {
+      setCloudProfiles(cloud.profiles);
+      setCircles(cloud.circles);
+      setMembers(cloud.members);
+      setSessions(cloud.sessions);
+      setCartItems(cloud.cartItems);
+      setDemoOrders(cloud.orders);
+      setMealWindows(cloud.mealWindows);
+      setVoteSessions(cloud.voteSessions);
+      setActiveRescueIssue(cloud.activeRescueIssue);
+    }
   }, []);
 
-  // Sync to LocalStorage
+  const signInWithSupabaseUser = useCallback(
+    async (
+      user: User,
+      overrides?: {
+        full_name?: string;
+        college?: string;
+        dietary_preference?: 'veg' | 'non-veg' | 'flexible';
+        preferred_budget?: number;
+      }
+    ) => {
+      const meta = user.user_metadata || {};
+      const profile: StudentProfile = {
+        id: user.id,
+        full_name:
+          overrides?.full_name ||
+          meta.full_name ||
+          user.email?.split('@')[0] ||
+          'Student Member',
+        email: user.email || `${user.id}@campus.edu`,
+        avatar_url:
+          meta.avatar_url ||
+          `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
+            overrides?.full_name || meta.full_name || user.email || user.id
+          )}`,
+        college: overrides?.college || meta.college || DEFAULT_CAMPUS_NAME,
+        academic_year: meta.academic_year || 'Student',
+        dietary_pref: normalizeDietaryPref(overrides?.dietary_preference || meta.dietary_pref),
+        preferred_budget: Number(overrides?.preferred_budget || meta.preferred_budget || 250),
+        updated_at: new Date().toISOString(),
+      };
+
+      setIsDemoMode(false);
+      setCurrentUser(profile);
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(profile));
+          localStorage.setItem(STORAGE_KEYS.DEMO_MODE, 'false');
+        } catch {}
+      }
+
+      const status = await checkCloudSchemaReadiness();
+      setSupabaseSchemaStatus(status);
+      if (status === 'ready') {
+        await upsertCloudProfile(profile);
+        await hydrateFromCloud(profile.id);
+      }
+    },
+    [hydrateFromCloud]
+  );
+
+  // Sync localStorage + Supabase Auth Session on mount
+  useEffect(() => {
+    let active = true;
+
+    const init = async () => {
+      let restoredUser: StudentProfile | null = null;
+      let restoredDemoMode = false;
+
+      if (typeof window !== 'undefined') {
+        try {
+          restoredDemoMode = localStorage.getItem(STORAGE_KEYS.DEMO_MODE) === 'true';
+          const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
+          const storedPersonas = localStorage.getItem(STORAGE_KEYS.PERSONAS);
+          const storedCircles = localStorage.getItem(STORAGE_KEYS.CIRCLES);
+          const storedMembers = localStorage.getItem(STORAGE_KEYS.MEMBERS);
+          const storedSessions = localStorage.getItem(STORAGE_KEYS.SESSIONS);
+          const storedCart = localStorage.getItem(STORAGE_KEYS.CART);
+          const storedOrders = localStorage.getItem(STORAGE_KEYS.ORDERS);
+          const storedMealWindows = localStorage.getItem(STORAGE_KEYS.MEAL_WINDOWS);
+          const storedVoteSessions = localStorage.getItem(STORAGE_KEYS.VOTE_SESSIONS);
+          const storedRescue = localStorage.getItem(STORAGE_KEYS.RESCUE_ISSUE);
+
+          if (storedPersonas) setPersonas(JSON.parse(storedPersonas));
+          if (storedUser) {
+            const parsed = JSON.parse(storedUser);
+            if (parsed.college === 'BITS Pilani - Hyderabad Campus') {
+              parsed.college = DEFAULT_CAMPUS_NAME;
+            }
+            restoredUser = parsed;
+            if (parsed.id && !isUuid(parsed.id) && parsed.id !== 'student-guest') {
+              restoredDemoMode = true;
+            }
+          }
+
+          if (restoredUser && (restoredDemoMode || !isSupabaseConfigured)) {
+            if (storedCircles) setCircles(JSON.parse(storedCircles));
+            if (storedMembers) setMembers(JSON.parse(storedMembers));
+            if (storedSessions) setSessions(JSON.parse(storedSessions));
+            if (storedCart) setCartItems(JSON.parse(storedCart));
+            if (storedOrders) setDemoOrders(JSON.parse(storedOrders));
+            if (storedMealWindows) setMealWindows(JSON.parse(storedMealWindows));
+            if (storedVoteSessions) setVoteSessions(JSON.parse(storedVoteSessions));
+            if (storedRescue) setActiveRescueIssue(JSON.parse(storedRescue));
+          }
+        } catch {
+          // localStorage read fallback
+        }
+      }
+
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const [schema, sessionRes] = await Promise.all([
+            checkCloudSchemaReadiness(),
+            supabase.auth.getSession(),
+          ]);
+
+          if (!active) return;
+          setSupabaseSchemaStatus(schema);
+
+          const sessionUser = sessionRes.data.session?.user;
+          if (sessionUser && !restoredDemoMode) {
+            await signInWithSupabaseUser(sessionUser);
+            if (schema === 'migrations_missing' && typeof window !== 'undefined') {
+              try {
+                const storedCircles = localStorage.getItem(STORAGE_KEYS.CIRCLES);
+                const storedMembers = localStorage.getItem(STORAGE_KEYS.MEMBERS);
+                const storedSessions = localStorage.getItem(STORAGE_KEYS.SESSIONS);
+                const storedCart = localStorage.getItem(STORAGE_KEYS.CART);
+                const storedOrders = localStorage.getItem(STORAGE_KEYS.ORDERS);
+                const storedMealWindows = localStorage.getItem(STORAGE_KEYS.MEAL_WINDOWS);
+                const storedVoteSessions = localStorage.getItem(STORAGE_KEYS.VOTE_SESSIONS);
+                const storedRescue = localStorage.getItem(STORAGE_KEYS.RESCUE_ISSUE);
+                if (storedCircles) setCircles(JSON.parse(storedCircles));
+                if (storedMembers) setMembers(JSON.parse(storedMembers));
+                if (storedSessions) setSessions(JSON.parse(storedSessions));
+                if (storedCart) setCartItems(JSON.parse(storedCart));
+                if (storedOrders) setDemoOrders(JSON.parse(storedOrders));
+                if (storedMealWindows) setMealWindows(JSON.parse(storedMealWindows));
+                if (storedVoteSessions) setVoteSessions(JSON.parse(storedVoteSessions));
+                if (storedRescue) setActiveRescueIssue(JSON.parse(storedRescue));
+              } catch {}
+            }
+            if (active) setMounted(true);
+            return;
+          }
+        } catch {
+          if (active) setSupabaseSchemaStatus('migrations_missing');
+        }
+      } else {
+        setSupabaseSchemaStatus('disabled');
+      }
+
+      if (active) {
+        if (restoredUser) setCurrentUser(restoredUser);
+        setIsDemoMode(restoredDemoMode);
+        setMounted(true);
+      }
+    };
+
+    init();
+
+    return () => {
+      active = false;
+    };
+  }, [signInWithSupabaseUser]);
+
+  // Listen to Supabase Auth state changes
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setIsDemoMode(false);
+        setCurrentUser(GUEST_USER);
+      } else if (event === 'SIGNED_IN' && session?.user) {
+        signInWithSupabaseUser(session.user);
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [signInWithSupabaseUser]);
+
   const persistState = useCallback(
     (
       u = currentUser,
@@ -376,11 +522,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       o = demoOrders,
       w = mealWindows,
       vs = voteSessions,
-      ri = activeRescueIssue
+      ri = activeRescueIssue,
+      demoFlag = isDemoMode
     ) => {
       if (typeof window === 'undefined') return;
       try {
         localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(u));
+        localStorage.setItem(STORAGE_KEYS.DEMO_MODE, demoFlag ? 'true' : 'false');
         localStorage.setItem(STORAGE_KEYS.CIRCLES, JSON.stringify(c));
         localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(m));
         localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(s));
@@ -397,26 +545,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // LocalStorage save error
       }
     },
-    [currentUser, circles, members, sessions, cartItems, demoOrders, mealWindows, voteSessions, activeRescueIssue]
+    [currentUser, circles, members, sessions, cartItems, demoOrders, mealWindows, voteSessions, activeRescueIssue, isDemoMode]
   );
 
-  // Broadcast Channel for cross-tab realtime sync on same machine
+  // Keep BroadcastChannel strictly isolated between Demo Sandbox and Authenticated Cloud state
+  const currentScopeRef = useRef<string>('guest');
+  currentScopeRef.current = isDemoMode ? 'demo' : isUuid(currentUser.id) ? 'cloud' : 'local';
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const channel = new BroadcastChannel('swiggy_campus_circles_sync');
 
     channel.onmessage = (event) => {
-      const { type, payload } = event.data;
-      if (type === 'SYNC_ALL') {
-        if (payload.circles) setCircles(payload.circles);
-        if (payload.members) setMembers(payload.members);
-        if (payload.sessions) setSessions(payload.sessions);
-        if (payload.cartItems) setCartItems(payload.cartItems);
-        if (payload.demoOrders) setDemoOrders(payload.demoOrders);
-        if (payload.mealWindows) setMealWindows(payload.mealWindows);
-        if (payload.voteSessions) setVoteSessions(payload.voteSessions);
-        if (payload.activeRescueIssue !== undefined) setActiveRescueIssue(payload.activeRescueIssue);
-      }
+      const { type, scope, payload } = event.data || {};
+      if (type !== 'SYNC_ALL') return;
+      // Do not mix demo broadcasts onto real authenticated accounts or vice versa
+      if (scope && scope !== currentScopeRef.current) return;
+
+      if (payload.circles) setCircles(payload.circles);
+      if (payload.members) setMembers(payload.members);
+      if (payload.sessions) setSessions(payload.sessions);
+      if (payload.cartItems) setCartItems(payload.cartItems);
+      if (payload.demoOrders) setDemoOrders(payload.demoOrders);
+      if (payload.mealWindows) setMealWindows(payload.mealWindows);
+      if (payload.voteSessions) setVoteSessions(payload.voteSessions);
+      if (payload.activeRescueIssue !== undefined) setActiveRescueIssue(payload.activeRescueIssue);
     };
 
     return () => {
@@ -424,7 +577,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Broadcast state updates to other tabs
   const broadcastUpdate = useCallback(
     (payload: {
       circles?: Circle[];
@@ -439,7 +591,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (typeof window === 'undefined') return;
       try {
         const channel = new BroadcastChannel('swiggy_campus_circles_sync');
-        channel.postMessage({ type: 'SYNC_ALL', payload });
+        channel.postMessage({ type: 'SYNC_ALL', scope: currentScopeRef.current, payload });
         channel.close();
       } catch {
         // broadcast fallback
@@ -448,19 +600,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  // Supabase Realtime synchronization listener (if configured)
+  // Supabase Realtime synchronization listener for live DB changes when schema is deployed
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase) return;
+    if (!useCloudPersistence || !supabase) return;
+
+    const refresh = () => {
+      hydrateFromCloud(currentUser.id);
+    };
 
     const channel = supabase
-      .channel('campus_circles_realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'cart_items' },
-        () => {
-          // In real Supabase mode, re-fetch or apply updates
-        }
-      )
+      .channel(`campus_circles_realtime_${currentUser.id.slice(0, 8)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'circle_members' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ordering_sessions' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cart_items' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'demo_orders' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'recurring_meal_windows' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'circle_vote_sessions' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'circle_votes' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_rescue_events' }, refresh)
       .subscribe((status) => {
         setIsRealtimeConnected(status === 'SUBSCRIBED');
       });
@@ -468,23 +625,94 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => {
       if (supabase) supabase.removeChannel(channel);
     };
+  }, [useCloudPersistence, currentUser.id, hydrateFromCloud]);
+
+  const logout = useCallback(() => {
+    setIsDemoMode(false);
+    setCurrentUser(GUEST_USER);
+    setCircles([]);
+    setMembers([]);
+    setSessions([]);
+    setCartItems([]);
+    setDemoOrders([]);
+    setMealWindows([]);
+    setVoteSessions([]);
+    setActiveRescueIssue(null);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(STORAGE_KEYS.USER);
+        localStorage.removeItem(STORAGE_KEYS.DEMO_MODE);
+      } catch {}
+    }
+    if (isSupabaseConfigured && supabase) {
+      supabase.auth.signOut().catch(() => {});
+    }
   }, []);
 
-  // Switch active persona
+  const addProfile = useCallback(
+    (data: {
+      full_name: string;
+      college: string;
+      avatar_url?: string;
+      dietary_preference?: 'veg' | 'non-veg' | 'flexible';
+      preferred_budget?: number;
+    }) => {
+      const newId = `student-custom-${Date.now()}`;
+      const newProfile: StudentProfile = {
+        id: newId,
+        full_name: data.full_name,
+        email: `${data.full_name.toLowerCase().replace(/\s+/g, '')}@campus.edu`,
+        avatar_url:
+          data.avatar_url ||
+          `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.full_name)}`,
+        college: data.college,
+        academic_year: 'Student',
+        dietary_pref: normalizeDietaryPref(data.dietary_preference),
+        preferred_budget: data.preferred_budget || 250,
+        updated_at: new Date().toISOString(),
+      };
+
+      setIsDemoMode(true);
+      setPersonas((prev) => {
+        const updated = [...prev, newProfile];
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(STORAGE_KEYS.PERSONAS, JSON.stringify(updated));
+          } catch {}
+        }
+        return updated;
+      });
+
+      setCurrentUser(newProfile);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(newProfile));
+          localStorage.setItem(STORAGE_KEYS.DEMO_MODE, 'true');
+        } catch {}
+      }
+    },
+    []
+  );
+
   const switchPersona = useCallback(
     (personaId: string) => {
+      if (!DEMO_PRESETS_ENABLED) return;
       const target = personas.find((p) => p.id === personaId);
       if (target) {
+        if (isSupabaseConfigured && supabase) {
+          supabase.auth.signOut().catch(() => {});
+        }
+        setIsDemoMode(true);
         setCurrentUser(target);
         if (typeof window !== 'undefined') {
           localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(target));
+          localStorage.setItem(STORAGE_KEYS.DEMO_MODE, 'true');
         }
       }
     },
     [personas]
   );
 
-  // Update profile
   const updateProfile = useCallback(
     (data: Partial<StudentProfile>) => {
       setCurrentUser((prev) => {
@@ -492,13 +720,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (typeof window !== 'undefined') {
           localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updated));
         }
+        if (useCloudPersistence) {
+          upsertCloudProfile(updated);
+        }
         return updated;
       });
     },
-    []
+    [useCloudPersistence]
   );
 
-  // Create circle
   const createCircle = useCallback(
     (data: {
       name: string;
@@ -508,7 +738,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       emoji?: string;
       preferred_budget?: number;
     }): Circle => {
-      const newCircleId = `circle-${Date.now()}`;
+      if (!isAuthenticated) {
+        throw new Error('Authentication required to create a circle.');
+      }
+
+      const newCircleId = useCloudPersistence ? createCloudId('circle') : `circle-${Date.now()}`;
       const inviteCode = generateInviteCode(6);
 
       const gradients = [
@@ -536,7 +770,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
 
       const adminMembership: CircleMember = {
-        id: `cm-${Date.now()}`,
+        id: useCloudPersistence ? createCloudId('cm') : `cm-${Date.now()}`,
         circle_id: newCircleId,
         user_id: currentUser.id,
         role: 'admin',
@@ -551,12 +785,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       persistState(currentUser, updatedCircles, updatedMembers);
       broadcastUpdate({ circles: updatedCircles, members: updatedMembers });
 
+      if (useCloudPersistence) {
+        createCloudCircle(newCircle, adminMembership);
+      }
+
       return newCircle;
     },
-    [currentUser, circles, members, persistState, broadcastUpdate]
+    [isAuthenticated, useCloudPersistence, currentUser, circles, members, persistState, broadcastUpdate]
   );
 
-  // Get circle by ID
   const getCircle = useCallback(
     (circleId: string) => {
       const circle = circles.find((c) => c.id === circleId);
@@ -567,7 +804,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [circles, members]
   );
 
-  // Get circle by invite code
   const getCircleByInviteCode = useCallback(
     (code: string) => {
       const normalized = code.trim().toUpperCase();
@@ -579,11 +815,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [circles, members]
   );
 
-  // Join circle
+  const resolveInviteCode = useCallback(
+    async (code: string): Promise<Circle | undefined> => {
+      const localMatch = getCircleByInviteCode(code);
+      if (localMatch) return localMatch;
+
+      if (useCloudPersistence) {
+        const cloudCircle = await lookupCloudCircleByInvite(code);
+        if (cloudCircle) {
+          setCircles((prev) =>
+            prev.some((c) => c.id === cloudCircle.id) ? prev : [cloudCircle, ...prev]
+          );
+          return cloudCircle;
+        }
+      }
+      return undefined;
+    },
+    [getCircleByInviteCode, useCloudPersistence]
+  );
+
   const joinCircle = useCallback(
-    (circleId: string) => {
+    async (circleId: string, inviteCode?: string) => {
+      if (!isAuthenticated) {
+        return { success: false, message: 'Sign in required before joining a circle.' };
+      }
+
       const circle = circles.find((c) => c.id === circleId);
       if (!circle) return { success: false, message: 'Circle not found' };
+
+      if (inviteCode !== undefined) {
+        const authCheck = canJoinCircle(
+          { id: circle.id, adminId: circle.admin_id, inviteCode: circle.invite_code },
+          inviteCode
+        );
+        if (!authCheck.allowed) {
+          return { success: false, message: authCheck.reason || 'Invalid invite code' };
+        }
+      }
 
       const existing = members.find(
         (m) => m.circle_id === circleId && m.user_id === currentUser.id
@@ -592,8 +860,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return { success: true, message: 'Already a member of this Circle' };
       }
 
+      if (useCloudPersistence && isUuid(circleId)) {
+        const res = await joinCloudCircleByInvite(circleId, inviteCode || circle.invite_code);
+        if (!res.ok) {
+          return { success: false, message: res.error || 'Failed to verify circle invite on server.' };
+        }
+      }
+
       const newMembership: CircleMember = {
-        id: `cm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        id: useCloudPersistence ? createCloudId('cm') : `cm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         circle_id: circleId,
         user_id: currentUser.id,
         role: 'member',
@@ -605,13 +880,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       persistState(currentUser, circles, updatedMembers);
       broadcastUpdate({ members: updatedMembers });
 
+      if (useCloudPersistence) {
+        hydrateFromCloud(currentUser.id);
+      }
+
       return { success: true, message: `Successfully joined ${circle.name}!` };
     },
-    [circles, members, currentUser, persistState, broadcastUpdate]
+    [isAuthenticated, circles, members, currentUser, useCloudPersistence, persistState, broadcastUpdate, hydrateFromCloud]
   );
 
-  // User circles
   const getUserCircles = useCallback(() => {
+    if (!isAuthenticated) return [];
     const userCircleIds = new Set(
       members.filter((m) => m.user_id === currentUser.id).map((m) => m.circle_id)
     );
@@ -621,35 +900,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...c,
         member_count: members.filter((m) => m.circle_id === c.id).length,
       }));
-  }, [circles, members, currentUser]);
+  }, [isAuthenticated, circles, members, currentUser]);
 
-  // Circle members with profile enrichment
   const getCircleMembers = useCallback(
     (circleId: string) => {
       const circleMemberships = members.filter((m) => m.circle_id === circleId);
       return circleMemberships.map((m) => {
-        const found = personas.find((p) => p.id === m.user_id) || {
-          id: m.user_id,
-          full_name: m.user_id === currentUser.id ? currentUser.full_name : 'Fellow Student',
-          email: `${m.user_id}@campus.edu`,
-          avatar_url:
-            m.user_id === currentUser.id
-              ? currentUser.avatar_url
-              : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-          college: currentUser.college,
-          academic_year: 'Student',
-          dietary_pref: 'BOTH' as const,
-          preferred_budget: 200,
+        if (m.user_id === currentUser.id) {
+          return { ...m, profile: currentUser };
+        }
+        const fromCloud = cloudProfiles.get(m.user_id);
+        if (fromCloud) {
+          return { ...m, profile: fromCloud };
+        }
+        const fromPersonas = personas.find((p) => p.id === m.user_id);
+        if (fromPersonas) {
+          return { ...m, profile: fromPersonas };
+        }
+        return {
+          ...m,
+          profile: {
+            id: m.user_id,
+            full_name: 'Circle Member',
+            email: `${m.user_id.slice(0, 8)}@campus.edu`,
+            avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(m.user_id)}`,
+            college: currentUser.college,
+            academic_year: 'Student',
+            dietary_pref: 'BOTH' as const,
+            preferred_budget: 200,
+          },
         };
-        return { ...m, profile: found };
       });
     },
-    [members, currentUser, personas]
+    [members, currentUser, cloudProfiles, personas]
   );
 
-  // Check if current user is circle admin
   const isCircleAdmin = useCallback(
     (circleId: string) => {
+      if (!isAuthenticated) return false;
       const member = members.find(
         (m) => m.circle_id === circleId && m.user_id === currentUser.id
       );
@@ -657,10 +945,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const circle = circles.find((c) => c.id === circleId);
       return circle?.admin_id === currentUser.id;
     },
-    [members, circles, currentUser]
+    [isAuthenticated, members, circles, currentUser]
   );
 
-  // Ordering Session
   const getSession = useCallback(
     (circleId: string) => {
       return sessions.find(
@@ -672,12 +959,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const startSession = useCallback(
     (circleId: string, restaurantId: string, cutoffMinutes = 30): OrderingSession => {
+      const circle = circles.find((c) => c.id === circleId);
+      const isMember = members.some((m) => m.circle_id === circleId && m.user_id === currentUser.id);
+      if (!circle || (!isMember && circle.admin_id !== currentUser.id)) {
+        throw new Error('Only circle members can start an ordering session.');
+      }
+
       const rest = DEMO_RESTAURANTS.find((r) => r.id === restaurantId);
       const restaurantName = rest ? rest.name : 'Campus Partner';
       const restaurantImage = rest ? rest.image : '';
 
       const newSession: OrderingSession = {
-        id: `sess-${Date.now()}`,
+        id: useCloudPersistence ? createCloudId('sess') : `sess-${Date.now()}`,
         circle_id: circleId,
         created_by: currentUser.id,
         restaurant_id: restaurantId,
@@ -686,10 +979,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         status: 'open',
         cutoff_time: new Date(Date.now() + cutoffMinutes * 60000).toISOString(),
         delivery_location: 'Hostel Main Gate / Common Reception',
+        ready_member_ids: [],
+        participations: {},
         created_at: new Date().toISOString(),
       };
 
-      // Close previous sessions for this circle
+      const cancelledPrev = sessions.filter((s) => s.circle_id === circleId && s.status === 'open');
       const updatedSessions = sessions
         .map((s) => (s.circle_id === circleId && s.status === 'open' ? { ...s, status: 'cancelled' as const } : s))
         .concat(newSession);
@@ -698,39 +993,73 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       persistState(currentUser, circles, members, updatedSessions);
       broadcastUpdate({ sessions: updatedSessions });
 
+      if (useCloudPersistence) {
+        cancelledPrev.forEach((prev) => upsertCloudSession({ ...prev, status: 'cancelled' }));
+        upsertCloudSession(newSession);
+      }
+
       return newSession;
     },
-    [currentUser, sessions, circles, members, persistState, broadcastUpdate]
+    [circles, members, currentUser, sessions, useCloudPersistence, persistState, broadcastUpdate]
   );
 
   const lockSession = useCallback(
     (sessionId: string) => {
-      const updated = sessions.map((s) =>
-        s.id === sessionId ? { ...s, status: 'locked' as const, updated_at: new Date().toISOString() } : s
+      const target = sessions.find((s) => s.id === sessionId);
+      if (!target) return;
+      const circle = circles.find((c) => c.id === target.circle_id);
+      if (!circle) return;
+
+      const check = canManageSession(
+        { id: currentUser.id, isDemo: isDemoMode },
+        { id: circle.id, adminId: circle.admin_id, inviteCode: circle.invite_code }
       );
+      if (!check.allowed && !isCircleAdmin(circle.id)) {
+        alert(check.reason || 'Only the circle admin can lock the cart.');
+        return;
+      }
+
+      const nextSession = { ...target, status: 'locked' as const, updated_at: new Date().toISOString() };
+      const updated = sessions.map((s) => (s.id === sessionId ? nextSession : s));
       setSessions(updated);
       persistState(currentUser, circles, members, updated);
       broadcastUpdate({ sessions: updated });
+      if (useCloudPersistence) upsertCloudSession(nextSession);
     },
-    [sessions, currentUser, circles, members, persistState, broadcastUpdate]
+    [sessions, circles, currentUser, isDemoMode, isCircleAdmin, members, persistState, broadcastUpdate, useCloudPersistence]
   );
 
   const reopenSession = useCallback(
     (sessionId: string) => {
-      const updated = sessions.map((s) =>
-        s.id === sessionId ? { ...s, status: 'open' as const, updated_at: new Date().toISOString() } : s
+      const target = sessions.find((s) => s.id === sessionId);
+      if (!target) return;
+      const circle = circles.find((c) => c.id === target.circle_id);
+      if (!circle) return;
+
+      const check = canManageSession(
+        { id: currentUser.id, isDemo: isDemoMode },
+        { id: circle.id, adminId: circle.admin_id, inviteCode: circle.invite_code }
       );
+      if (!check.allowed && !isCircleAdmin(circle.id)) {
+        alert(check.reason || 'Only the circle admin can reopen the cart.');
+        return;
+      }
+
+      const nextSession = { ...target, status: 'open' as const, updated_at: new Date().toISOString() };
+      const updated = sessions.map((s) => (s.id === sessionId ? nextSession : s));
       setSessions(updated);
       persistState(currentUser, circles, members, updated);
       broadcastUpdate({ sessions: updated });
+      if (useCloudPersistence) upsertCloudSession(nextSession);
     },
-    [sessions, currentUser, circles, members, persistState, broadcastUpdate]
+    [sessions, circles, currentUser, isDemoMode, isCircleAdmin, members, persistState, broadcastUpdate, useCloudPersistence]
   );
 
-  // Feature A: Member Ready Status
   const toggleMemberReady = useCallback(
     (sessionId: string, userId = currentUser.id) => {
+      if (userId !== currentUser.id) return;
       setSessions((prev) => {
+        let changed: OrderingSession | null = null;
         const updated = prev.map((s) => {
           if (s.id !== sessionId) return s;
           const currentReady = s.ready_member_ids || [];
@@ -738,33 +1067,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const nextReady = isReady
             ? currentReady.filter((id) => id !== userId)
             : [...currentReady, userId];
-          return { ...s, ready_member_ids: nextReady, updated_at: new Date().toISOString() };
+          changed = { ...s, ready_member_ids: nextReady, updated_at: new Date().toISOString() };
+          return changed;
         });
         persistState(currentUser, circles, members, updated);
         broadcastUpdate({ sessions: updated });
+        if (useCloudPersistence && changed) upsertCloudSession(changed);
         return updated;
       });
     },
-    [currentUser, circles, members, persistState, broadcastUpdate]
+    [currentUser, circles, members, persistState, broadcastUpdate, useCloudPersistence]
   );
 
-  // Feature E: Campus Pickup Notes
   const updatePickupNote = useCallback(
     (sessionId: string, pickupNote: string) => {
+      const target = sessions.find((s) => s.id === sessionId);
+      if (!target || !isCircleAdmin(target.circle_id)) return;
+
       setSessions((prev) => {
+        let changed: OrderingSession | null = null;
         const updated = prev.map((s) => {
           if (s.id !== sessionId) return s;
-          return { ...s, pickup_note: pickupNote, updated_at: new Date().toISOString() };
+          changed = { ...s, pickup_note: pickupNote, updated_at: new Date().toISOString() };
+          return changed;
         });
         persistState(currentUser, circles, members, updated);
         broadcastUpdate({ sessions: updated });
+        if (useCloudPersistence && changed) upsertCloudSession(changed);
         return updated;
       });
     },
-    [currentUser, circles, members, persistState, broadcastUpdate]
+    [sessions, isCircleAdmin, currentUser, circles, members, persistState, broadcastUpdate, useCloudPersistence]
   );
 
-  // Feature C: One-Click Reorder
   const startReorderSession = useCallback(
     (orderId: string) => {
       const order = demoOrders.find((o) => o.id === orderId || o.order_code === orderId);
@@ -775,7 +1110,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const restaurantImage = rest ? rest.image : '';
 
       const newSession: OrderingSession = {
-        id: `sess-${Date.now()}`,
+        id: useCloudPersistence ? createCloudId('sess') : `sess-${Date.now()}`,
         circle_id: order.circle_id,
         created_by: currentUser.id,
         restaurant_id: order.restaurant_id,
@@ -786,6 +1121,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         delivery_location: order.delivery_location || 'Hostel Main Gate / Common Reception',
         pickup_note: order.delivery_instructions,
         ready_member_ids: [],
+        participations: {},
         created_at: new Date().toISOString(),
       };
 
@@ -796,13 +1132,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setSessions(updatedSessions);
       persistState(currentUser, circles, members, updatedSessions);
       broadcastUpdate({ sessions: updatedSessions });
+      if (useCloudPersistence) upsertCloudSession(newSession);
 
       const previousItems: CartItem[] = [];
       order.member_breakdowns.forEach((mb) => {
-        mb.items.forEach((item) => {
+        (mb.items || []).forEach((item) => {
           previousItems.push({
             ...item,
-            id: `reorder-${item.item_id}-${mb.user_id}-${Date.now()}`,
+            id: useCloudPersistence ? createCloudId('ci') : `reorder-${item.item_id}-${mb.user_id}-${Date.now()}`,
             session_id: newSession.id,
           });
         });
@@ -810,10 +1147,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       return { session: newSession, previousItems };
     },
-    [demoOrders, currentUser, sessions, circles, members, persistState, broadcastUpdate]
+    [demoOrders, useCloudPersistence, currentUser, sessions, circles, members, persistState, broadcastUpdate]
   );
 
-  // Feature B: Smart Budget Guardrails calculations in integer paise
   const getMemberCartTotalPaise = useCallback(
     (sessionId: string, userId: string) => {
       return cartItems
@@ -826,15 +1162,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getMemberRemainingBudgetPaise = useCallback(
     (sessionId: string, userId: string, circleId: string) => {
       const circle = circles.find((c) => c.id === circleId);
-      const user = DEMO_PERSONAS.find((p) => p.id === userId) || currentUser;
+      const user =
+        (userId === currentUser.id ? currentUser : undefined) ||
+        cloudProfiles.get(userId) ||
+        personas.find((p) => p.id === userId) ||
+        currentUser;
       const budgetPaise = (user.preferred_budget || circle?.preferred_budget || 200) * 100;
       const spentPaise = getMemberCartTotalPaise(sessionId, userId);
       return Math.max(0, budgetPaise - spentPaise);
     },
-    [circles, currentUser, getMemberCartTotalPaise]
+    [circles, currentUser, cloudProfiles, personas, getMemberCartTotalPaise]
   );
 
-  // Cart operations
   const getSessionCartItems = useCallback(
     (sessionId: string) => {
       return cartItems.filter((i) => i.session_id === sessionId);
@@ -851,21 +1190,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       targetUserId?: string
     ) => {
       const session = sessions.find((s) => s.id === sessionId);
-      if (session && session.status !== 'open') {
-        alert('This order session is locked or finalized.');
-        return;
-      }
-      if (session && session.cutoff_time && new Date(session.cutoff_time).getTime() < Date.now()) {
-        alert('The order cutoff deadline has passed for this session! Ask the organizer to extend the cutoff.');
-        return;
-      }
-
       const effectiveUserId = targetUserId || currentUser.id;
-      const targetProfile =
-        DEMO_PERSONAS.find((p) => p.id === effectiveUserId) || currentUser;
+      const isMember = members.some((m) => m.circle_id === circleId && m.user_id === effectiveUserId);
+      const isActorAdmin = isCircleAdmin(circleId);
 
+      // Non-admins can only add dishes for themselves
+      if (effectiveUserId !== currentUser.id && !isActorAdmin) {
+        alert('Members can only add dishes to their own cart portion.');
+        return;
+      }
+
+      if (session) {
+        const authCheck = canModifyCartItem(
+          { id: effectiveUserId, isDemo: isDemoMode },
+          { id: 'new', sessionId, circleId, userId: effectiveUserId },
+          { id: session.id, circleId: session.circle_id, status: session.status, cutoffTime: session.cutoff_time },
+          isMember || isActorAdmin
+        );
+        if (!authCheck.allowed) {
+          alert(authCheck.reason || 'Cannot add item to this session.');
+          return;
+        }
+      }
+
+      const targetProfile =
+        (effectiveUserId === currentUser.id ? currentUser : undefined) ||
+        cloudProfiles.get(effectiveUserId) ||
+        personas.find((p) => p.id === effectiveUserId) ||
+        currentUser;
+
+      let itemToSync: CartItem | null = null;
       setCartItems((prev) => {
-        // Check if user already has identical item
         const existingIndex = prev.findIndex(
           (ci) =>
             ci.session_id === sessionId &&
@@ -876,12 +1231,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         let updated: CartItem[];
         if (existingIndex > -1) {
-          updated = prev.map((ci, idx) =>
-            idx === existingIndex ? { ...ci, quantity: ci.quantity + 1 } : ci
-          );
+          itemToSync = {
+            ...prev[existingIndex],
+            quantity: prev[existingIndex].quantity + 1,
+            updated_at: new Date().toISOString(),
+          };
+          updated = prev.map((ci, idx) => (idx === existingIndex ? itemToSync! : ci));
         } else {
-          const newItem: CartItem = {
-            id: `cart-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          itemToSync = {
+            id: useCloudPersistence
+              ? createCloudId('cart')
+              : `cart-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
             session_id: sessionId,
             circle_id: circleId,
             user_id: effectiveUserId,
@@ -895,15 +1255,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             customization: customization || undefined,
             created_at: new Date().toISOString(),
           };
-          updated = [...prev, newItem];
+          updated = [...prev, itemToSync];
         }
 
         persistState(currentUser, circles, members, sessions, updated, demoOrders, mealWindows);
         broadcastUpdate({ cartItems: updated });
         return updated;
       });
+
+      if (useCloudPersistence && itemToSync) {
+        upsertCloudCartItem(itemToSync);
+      }
     },
-    [currentUser, sessions, circles, members, persistState, broadcastUpdate, demoOrders, mealWindows]
+    [
+      sessions,
+      currentUser,
+      members,
+      isCircleAdmin,
+      isDemoMode,
+      cloudProfiles,
+      personas,
+      useCloudPersistence,
+      circles,
+      demoOrders,
+      mealWindows,
+      persistState,
+      broadcastUpdate,
+    ]
   );
 
   const updateCartQuantity = useCallback(
@@ -913,28 +1291,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!item) return prev;
 
         const session = sessions.find((s) => s.id === item.session_id);
-        if (session && session.status !== 'open') {
-          return prev;
-        }
-        if (session && session.cutoff_time && new Date(session.cutoff_time).getTime() < Date.now()) {
-          alert('Cannot modify cart: order cutoff deadline has passed.');
-          return prev;
-        }
+        const isMember = members.some((m) => m.circle_id === item.circle_id && m.user_id === currentUser.id);
+        const isAdmin = isCircleAdmin(item.circle_id);
 
-        const circle = circles.find((c) => c.id === item.circle_id);
-        const isAdmin = circle?.admin_id === currentUser.id;
-        if (item.user_id !== currentUser.id && !isAdmin) {
-          alert('You can only edit your own dishes in the shared cart.');
-          return prev;
+        if (session) {
+          if (item.user_id !== currentUser.id && !isAdmin) {
+            alert('You can only edit your own dishes in the shared cart.');
+            return prev;
+          }
+          const authCheck = canModifyCartItem(
+            { id: item.user_id, isDemo: isDemoMode },
+            { id: item.id, sessionId: item.session_id, circleId: item.circle_id, userId: item.user_id },
+            { id: session.id, circleId: session.circle_id, status: session.status, cutoffTime: session.cutoff_time },
+            isMember || isAdmin
+          );
+          if (!authCheck.allowed) {
+            alert(authCheck.reason || 'Cannot modify cart.');
+            return prev;
+          }
         }
 
         let updated: CartItem[];
         if (item.quantity + delta <= 0) {
           updated = prev.filter((ci) => ci.id !== cartItemId);
+          if (useCloudPersistence) deleteCloudCartItem(cartItemId);
         } else {
-          updated = prev.map((ci) =>
-            ci.id === cartItemId ? { ...ci, quantity: ci.quantity + delta } : ci
-          );
+          const modified = { ...item, quantity: item.quantity + delta, updated_at: new Date().toISOString() };
+          updated = prev.map((ci) => (ci.id === cartItemId ? modified : ci));
+          if (useCloudPersistence) upsertCloudCartItem(modified);
         }
 
         persistState(currentUser, circles, members, sessions, updated, demoOrders, mealWindows);
@@ -942,7 +1326,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return updated;
       });
     },
-    [sessions, currentUser, circles, members, persistState, broadcastUpdate, demoOrders, mealWindows]
+    [
+      sessions,
+      members,
+      currentUser,
+      isCircleAdmin,
+      isDemoMode,
+      useCloudPersistence,
+      circles,
+      demoOrders,
+      mealWindows,
+      persistState,
+      broadcastUpdate,
+    ]
   );
 
   const removeFromCart = useCallback(
@@ -952,57 +1348,74 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!item) return prev;
 
         const session = sessions.find((s) => s.id === item.session_id);
-        if (session && session.status !== 'open') {
-          return prev;
-        }
-        if (session && session.cutoff_time && new Date(session.cutoff_time).getTime() < Date.now()) {
-          alert('Cannot remove dish: order cutoff deadline has passed.');
-          return prev;
-        }
+        const isMember = members.some((m) => m.circle_id === item.circle_id && m.user_id === currentUser.id);
+        const isAdmin = isCircleAdmin(item.circle_id);
 
-        const circle = circles.find((c) => c.id === item.circle_id);
-        const isAdmin = circle?.admin_id === currentUser.id;
-        if (item.user_id !== currentUser.id && !isAdmin) {
-          alert('You can only remove your own dishes from the shared cart.');
-          return prev;
+        if (session) {
+          if (item.user_id !== currentUser.id && !isAdmin) {
+            alert('You can only remove your own dishes from the shared cart.');
+            return prev;
+          }
+          const authCheck = canModifyCartItem(
+            { id: item.user_id, isDemo: isDemoMode },
+            { id: item.id, sessionId: item.session_id, circleId: item.circle_id, userId: item.user_id },
+            { id: session.id, circleId: session.circle_id, status: session.status, cutoffTime: session.cutoff_time },
+            isMember || isAdmin
+          );
+          if (!authCheck.allowed) {
+            alert(authCheck.reason || 'Cannot remove item from cart.');
+            return prev;
+          }
         }
 
         const updated = prev.filter((ci) => ci.id !== cartItemId);
+        if (useCloudPersistence) deleteCloudCartItem(cartItemId);
         persistState(currentUser, circles, members, sessions, updated, demoOrders, mealWindows);
         broadcastUpdate({ cartItems: updated });
         return updated;
       });
     },
-    [currentUser, circles, members, sessions, persistState, broadcastUpdate, demoOrders, mealWindows]
+    [
+      sessions,
+      members,
+      currentUser,
+      isCircleAdmin,
+      isDemoMode,
+      useCloudPersistence,
+      circles,
+      demoOrders,
+      mealWindows,
+      persistState,
+      broadcastUpdate,
+    ]
   );
 
-  // Finalize order (Simulated Checkout)
   const finalizeSession = useCallback(
     (sessionId: string, deliveryLocation: string, instructions?: string): DemoOrder => {
       const session = sessions.find((s) => s.id === sessionId);
       if (!session) throw new Error('Session not found');
 
       const circle = circles.find((c) => c.id === session.circle_id);
-      const items = cartItems.filter((i) => i.session_id === sessionId);
+      if (!circle || !isCircleAdmin(circle.id)) {
+        throw new Error('Only the circle admin can finalize the group order.');
+      }
 
+      const items = cartItems.filter((i) => i.session_id === sessionId);
       if (items.length === 0) {
         throw new Error('Cannot finalize an empty cart');
       }
 
-      // Calculate totals in integer paise
       const subtotalPaise = items.reduce(
         (sum, item) => sum + item.item_price_paise * item.quantity,
         0
       );
       const totalItemsCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-      // Student discount: delivery fee waived if total > ₹400 (40000 paise)
       const deliveryFeePaise = subtotalPaise > 40000 ? 0 : 3000;
-      const platformFeePaise = 500; // ₹5 demo fee
-      const discountPaise = subtotalPaise > 50000 ? 5000 : 0; // ₹50 off on ₹500+
+      const platformFeePaise = 500;
+      const discountPaise = subtotalPaise > 50000 ? 5000 : 0;
       const totalPaise = subtotalPaise + deliveryFeePaise + platformFeePaise - discountPaise;
 
-      // Calculate per member breakdown
       const breakdowns = calculateMemberSplit(
         items,
         deliveryFeePaise,
@@ -1013,10 +1426,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const orderCode = `SW-CAMPUS-${Math.floor(1000 + Math.random() * 9000)}`;
 
       const newOrder: DemoOrder = {
-        id: `order-${Date.now()}`,
+        id: useCloudPersistence ? createCloudId('order') : `order-${Date.now()}`,
         order_code: orderCode,
         circle_id: session.circle_id,
-        circle_name: circle ? circle.name : 'Campus Circle',
+        circle_name: circle.name,
         session_id: sessionId,
         placed_by_id: currentUser.id,
         placed_by_name: currentUser.full_name,
@@ -1035,19 +1448,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         created_at: new Date().toISOString(),
       };
 
-      // Mark session finalized
-      const updatedSessions = sessions.map((s) =>
-        s.id === sessionId ? { ...s, status: 'finalized' as const, updated_at: new Date().toISOString() } : s
-      );
-
+      const finalizedSession = {
+        ...session,
+        status: 'finalized' as const,
+        updated_at: new Date().toISOString(),
+      };
+      const updatedSessions = sessions.map((s) => (s.id === sessionId ? finalizedSession : s));
       const updatedOrders = [newOrder, ...demoOrders];
 
-      // Compute decision time in seconds from session creation
       const sessionCreatedTime = new Date(session.created_at).getTime();
       const decisionTimeSeconds = Math.max(5, Math.round((Date.now() - sessionCreatedTime) / 1000));
       const uniqueParticipants = Array.from(new Set(items.map((i) => i.user_id)));
 
-      // Track genuine campus pilot order event (clearly separated from seeded baseline)
       analyticsService.trackEvent(
         'order_finalized',
         session.circle_id,
@@ -1071,12 +1483,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       persistState(currentUser, circles, members, updatedSessions, cartItems, updatedOrders);
       broadcastUpdate({ sessions: updatedSessions, demoOrders: updatedOrders });
 
+      if (useCloudPersistence) {
+        upsertCloudSession(finalizedSession);
+        insertCloudDemoOrder(newOrder);
+      }
+
       return newOrder;
     },
-    [sessions, circles, members, cartItems, currentUser, demoOrders, persistState, broadcastUpdate]
+    [
+      sessions,
+      circles,
+      isCircleAdmin,
+      cartItems,
+      useCloudPersistence,
+      currentUser,
+      demoOrders,
+      members,
+      persistState,
+      broadcastUpdate,
+    ]
   );
 
-  // Get order
   const getOrder = useCallback(
     (orderId: string) => {
       return demoOrders.find((o) => o.id === orderId || o.order_code === orderId);
@@ -1084,22 +1511,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [demoOrders]
   );
 
-  // Get orders for current user
   const getOrdersForUser = useCallback(() => {
+    if (!isAuthenticated) return [];
+    const userCircleIds = new Set(
+      members.filter((m) => m.user_id === currentUser.id).map((m) => m.circle_id)
+    );
     return demoOrders.filter(
       (o) =>
+        userCircleIds.has(o.circle_id) ||
         o.placed_by_id === currentUser.id ||
         o.member_breakdowns.some((m) => m.user_id === currentUser.id)
     );
-  }, [demoOrders, currentUser]);
+  }, [isAuthenticated, demoOrders, members, currentUser]);
 
-  // Restaurants
   const restaurants = DEMO_RESTAURANTS;
   const getRestaurant = useCallback((id: string) => {
     return DEMO_RESTAURANTS.find((r) => r.id === id);
   }, []);
 
-  // Part 4: Recurring Campus Meal Windows
   const getMealWindows = useCallback(
     (circleId: string) => {
       return mealWindows.filter((w) => w.circle_id === circleId && w.active);
@@ -1119,9 +1548,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       pickupPoint: string;
       startSessionImmediately?: boolean;
     }) => {
+      if (!isCircleAdmin(data.circleId)) {
+        throw new Error('Only the circle admin can schedule meal windows.');
+      }
+
       const rest = DEMO_RESTAURANTS.find((r) => r.id === data.restaurantId);
       const newWindow: RecurringMealWindow = {
-        id: `mw-${Date.now()}`,
+        id: useCloudPersistence ? createCloudId('mw') : `mw-${Date.now()}`,
         circle_id: data.circleId,
         meal_type: data.mealType,
         title: data.title,
@@ -1142,7 +1575,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (data.startSessionImmediately) {
         const cutoffTime = new Date(Date.now() + data.cutoffMinutesBefore * 60000).toISOString();
         const newSession: OrderingSession = {
-          id: `sess-${Date.now()}`,
+          id: useCloudPersistence ? createCloudId('sess') : `sess-${Date.now()}`,
           circle_id: data.circleId,
           created_by: currentUser.id,
           restaurant_id: data.restaurantId,
@@ -1186,6 +1619,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         );
         broadcastUpdate({ sessions: updatedSessions, mealWindows: updatedWindows });
         createdSession = newSession;
+        if (useCloudPersistence) upsertCloudSession(newSession);
       } else {
         persistState(
           currentUser,
@@ -1197,6 +1631,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           updatedWindows
         );
         broadcastUpdate({ mealWindows: updatedWindows });
+      }
+
+      if (useCloudPersistence) {
+        insertCloudMealWindow(newWindow, currentUser.id);
       }
 
       analyticsService.trackEvent(
@@ -1214,6 +1652,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { window: newWindow, session: createdSession };
     },
     [
+      isCircleAdmin,
+      useCloudPersistence,
       currentUser,
       mealWindows,
       sessions,
@@ -1233,7 +1673,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       status: ParticipationStatus,
       tempBudgetPaise?: number
     ) => {
+      if (userId !== currentUser.id) return;
       setSessions((prev) => {
+        let changed: OrderingSession | null = null;
         const updated = prev.map((s) => {
           if (s.id !== sessionId) return s;
           const currentParts = s.participations || {};
@@ -1246,14 +1688,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               updated_at: new Date().toISOString(),
             },
           };
-          return {
+          changed = {
             ...s,
             participations: updatedParts,
             updated_at: new Date().toISOString(),
           };
+          return changed;
         });
         persistState(currentUser, circles, members, updated, cartItems, demoOrders, mealWindows);
         broadcastUpdate({ sessions: updated });
+        if (useCloudPersistence && changed) upsertCloudSession(changed);
         return updated;
       });
 
@@ -1265,10 +1709,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         { status, tempBudgetPaise }
       );
     },
-    [sessions, currentUser, circles, members, cartItems, demoOrders, mealWindows, persistState, broadcastUpdate]
+    [
+      sessions,
+      currentUser,
+      circles,
+      members,
+      cartItems,
+      demoOrders,
+      mealWindows,
+      persistState,
+      broadcastUpdate,
+      useCloudPersistence,
+    ]
   );
 
-  // Phase 6 Feature 1: CircleVote — The Decision Room
   const getActiveVoteSession = useCallback(
     (circleId: string): CircleVoteSession | undefined => {
       return voteSessions.find((s) => s.circle_id === circleId && s.status === 'active');
@@ -1285,6 +1739,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ): CircleVoteSession => {
       const circle = circles.find((c) => c.id === circleId);
       if (!circle) throw new Error('Circle not found');
+      if (!isCircleAdmin(circleId)) {
+        throw new Error('Only the circle admin can launch a Decision Room poll.');
+      }
 
       const candidateRestObjs = candidateRestaurantIds
         .map((rid) => DEMO_RESTAURANTS.find((r) => r.id === rid))
@@ -1294,16 +1751,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         throw new Error('At least one valid restaurant candidate is required.');
       }
 
-      const circleMemberList = members
-        .filter((m) => m.circle_id === circleId)
-        .map((m) => DEMO_PERSONAS.find((p) => p.id === m.user_id) || currentUser);
+      const circleMemberList = getCircleMembers(circleId).map((m) => m.profile);
 
       const candidateInputs: CandidateRestaurantInput[] = candidateRestObjs.map((rest) => ({
         restaurant: rest,
         source: 'campus_catalog',
       }));
 
-      const newVoteSession = createVoteSession(
+      let newVoteSession = createVoteSession(
         circle,
         currentUser.id,
         candidateInputs,
@@ -1311,6 +1766,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         cutoffMinutes,
         title
       );
+
+      if (useCloudPersistence) {
+        const cloudSessionId = createCloudId('vote');
+        newVoteSession = {
+          ...newVoteSession,
+          id: cloudSessionId,
+          meal_session_id: getSession(circleId)?.id,
+          options: newVoteSession.options.map((opt) => ({
+            ...opt,
+            id: createCloudId('opt'),
+          })),
+        };
+      }
 
       const updatedSessions = [
         newVoteSession,
@@ -1331,6 +1799,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
       broadcastUpdate({ voteSessions: updatedSessions });
 
+      if (useCloudPersistence) {
+        upsertCloudVoteSession(newVoteSession, true);
+      }
+
       analyticsService.trackEvent(
         'circlevote_started',
         circleId,
@@ -1347,9 +1819,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     },
     [
       circles,
-      members,
+      isCircleAdmin,
+      getCircleMembers,
       currentUser,
+      useCloudPersistence,
+      getSession,
       voteSessions,
+      members,
       sessions,
       cartItems,
       demoOrders,
@@ -1386,6 +1862,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
       broadcastUpdate({ voteSessions: updatedSessions });
 
+      if (useCloudPersistence && updated.votes[currentUser.id]) {
+        upsertCloudVote(updated.votes[currentUser.id]);
+      }
+
       analyticsService.trackEvent(
         'circlevote_cast',
         session.circle_id,
@@ -1409,6 +1889,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       activeRescueIssue,
       persistState,
       broadcastUpdate,
+      useCloudPersistence,
     ]
   );
 
@@ -1437,6 +1918,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
       broadcastUpdate({ voteSessions: updatedSessions });
 
+      if (useCloudPersistence) {
+        upsertCloudVoteSession(finalized, false);
+      }
+
       analyticsService.trackEvent(
         'circlevote_completed',
         session.circle_id,
@@ -1463,6 +1948,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       activeRescueIssue,
       persistState,
       broadcastUpdate,
+      useCloudPersistence,
     ]
   );
 
@@ -1490,7 +1976,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updatedSessions = sessions.map((s) => (s.id === sessionId ? targetSession! : s));
       } else {
         const newSession: OrderingSession = {
-          id: `sess-${Date.now()}`,
+          id: useCloudPersistence ? createCloudId('sess') : `sess-${Date.now()}`,
           circle_id: voteSession.circle_id,
           created_by: currentUser.id,
           restaurant_id: rest.id,
@@ -1519,6 +2005,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
       broadcastUpdate({ sessions: updatedSessions });
 
+      if (useCloudPersistence) {
+        upsertCloudSession(targetSession);
+      }
+
       analyticsService.trackEvent(
         'circlevote_restaurant_selected',
         voteSession.circle_id,
@@ -1535,8 +2025,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [
       voteSessions,
       sessions,
-      circles,
+      useCloudPersistence,
       currentUser,
+      circles,
       members,
       cartItems,
       demoOrders,
@@ -1547,30 +2038,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ]
   );
 
-  // Phase 6 Feature 2: Order Rescue AI
   const triggerOrderRescue = useCallback(
     (
       scenario: OrderRescueScenario,
       originalDish: { id: string; name: string; price_paise: number },
       customReason?: string,
-      isDemo = false
+      isDemo = false,
+      options?: {
+        circleId?: string;
+        affectedUser?: StudentProfile;
+        restaurantId?: string;
+      }
     ): OrderRescueIssue => {
-      const activeSession = sessions.find((s) => s.status === 'open');
-      const rest = activeSession
-        ? DEMO_RESTAURANTS.find((r) => r.id === activeSession.restaurant_id) || DEMO_RESTAURANTS[0]
+      const targetCircleId = options?.circleId || circles[0]?.id || 'circle-cse-lunch-squad';
+      const activeSession =
+        sessions.find((s) => s.circle_id === targetCircleId && s.status === 'open') ||
+        sessions.find((s) => s.status === 'open');
+
+      const targetRestId = options?.restaurantId || activeSession?.restaurant_id;
+      const rest = targetRestId
+        ? DEMO_RESTAURANTS.find((r) => r.id === targetRestId) || DEMO_RESTAURANTS[0]
         : DEMO_RESTAURANTS[0];
 
-      const issue = detectOrderIssue(
+      const affectedUser = options?.affectedUser || currentUser;
+
+      let issue = detectOrderIssue(
         scenario,
         activeSession?.id || 'sess-rescue-demo',
-        activeSession?.circle_id || circles[0]?.id || 'circle-cse-lunch-squad',
-        currentUser,
+        targetCircleId,
+        affectedUser,
         originalDish,
         rest,
         cartItems,
         customReason,
         isDemo
       );
+
+      if (useCloudPersistence && activeSession && isUuid(activeSession.id)) {
+        issue = { ...issue, id: createCloudId('rescue') };
+      }
 
       setActiveRescueIssue(issue);
       persistState(
@@ -1586,11 +2092,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
       broadcastUpdate({ activeRescueIssue: issue });
 
+      if (useCloudPersistence && !isDemo) {
+        upsertCloudRescueIssue(issue, 'detected');
+      }
+
       analyticsService.trackEvent(
         'order_rescue_triggered',
         issue.circle_id,
         issue.session_id,
-        currentUser.id,
+        affectedUser.id,
         {
           scenario,
           originalDishId: originalDish.id,
@@ -1602,10 +2112,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return issue;
     },
     [
-      sessions,
       circles,
+      sessions,
       currentUser,
       cartItems,
+      useCloudPersistence,
       members,
       demoOrders,
       mealWindows,
@@ -1617,6 +2128,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const acceptRescueReplacement = useCallback(
     (issue: OrderRescueIssue, alternative: OrderRescueAlternative) => {
+      const isActorAdmin = isCircleAdmin(issue.circle_id);
+      if (currentUser.id !== issue.user_id && !isActorAdmin) {
+        alert('Only the affected student or circle admin can approve this replacement.');
+        return;
+      }
+
       const session = sessions.find((s) => s.id === issue.session_id);
       if (session && session.status !== 'open') {
         alert('Cannot modify cart: Ordering session is locked or finalized.');
@@ -1627,28 +2144,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      let syncedItem: CartItem | null = null;
       setCartItems((prev) => {
         const existingIndex = prev.findIndex(
-          (ci) => ci.session_id === issue.session_id && ci.user_id === issue.user_id && ci.item_id === issue.original_dish_id
+          (ci) =>
+            ci.session_id === issue.session_id &&
+            ci.user_id === issue.user_id &&
+            ci.item_id === issue.original_dish_id
         );
 
         let updated: CartItem[];
         if (existingIndex !== -1) {
-          updated = prev.map((ci, idx) =>
-            idx === existingIndex
-              ? {
-                  ...ci,
-                  item_id: alternative.dish_id,
-                  item_name: alternative.dish_name,
-                  item_price_paise: alternative.price_paise,
-                  item_is_veg: alternative.is_veg,
-                  updated_at: new Date().toISOString(),
-                }
-              : ci
-          );
+          syncedItem = {
+            ...prev[existingIndex],
+            item_id: alternative.dish_id,
+            item_name: alternative.dish_name,
+            item_price_paise: alternative.price_paise,
+            item_is_veg: alternative.is_veg,
+            updated_at: new Date().toISOString(),
+          };
+          updated = prev.map((ci, idx) => (idx === existingIndex ? syncedItem! : ci));
         } else {
-          const newItem: CartItem = {
-            id: `ci-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          syncedItem = {
+            id: useCloudPersistence
+              ? createCloudId('ci')
+              : `ci-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
             session_id: issue.session_id,
             circle_id: issue.circle_id,
             user_id: issue.user_id,
@@ -1661,7 +2181,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             quantity: 1,
             created_at: new Date().toISOString(),
           };
-          updated = [...prev, newItem];
+          updated = [...prev, syncedItem];
         }
 
         persistState(
@@ -1679,6 +2199,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return updated;
       });
 
+      if (useCloudPersistence && syncedItem) {
+        upsertCloudCartItem(syncedItem);
+        upsertCloudRescueIssue(issue, 'resolved', alternative.dish_id);
+      }
+
       setActiveRescueIssue(null);
 
       analyticsService.trackEvent(
@@ -1695,8 +2220,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
     },
     [
-      sessions,
+      isCircleAdmin,
       currentUser,
+      sessions,
+      useCloudPersistence,
       circles,
       members,
       demoOrders,
@@ -1724,6 +2251,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
       broadcastUpdate({ activeRescueIssue: null });
 
+      if (useCloudPersistence && issue) {
+        upsertCloudRescueIssue(issue, 'dismissed');
+      }
+
       if (issue) {
         analyticsService.trackEvent(
           'order_rescue_declined',
@@ -1749,32 +2280,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       voteSessions,
       persistState,
       broadcastUpdate,
+      useCloudPersistence,
     ]
   );
 
   const getJudgeDemoScenarios = useCallback(
     (circleId: string): Record<string, OrderRescueIssue> => {
-      const activeSession = sessions.find((s) => s.circle_id === circleId && s.status === 'open') || sessions[0];
-      const rest = DEMO_RESTAURANTS.find((r) => r.id === activeSession?.restaurant_id) || DEMO_RESTAURANTS[0];
-      const circleMemberList = members
-        .filter((m) => m.circle_id === circleId)
-        .map((m) => DEMO_PERSONAS.find((p) => p.id === m.user_id) || currentUser);
+      const activeSession =
+        sessions.find((s) => s.circle_id === circleId && s.status === 'open') || sessions[0];
+      const rest =
+        DEMO_RESTAURANTS.find((r) => r.id === activeSession?.restaurant_id) || DEMO_RESTAURANTS[0];
+      const circleMemberList = getCircleMembers(circleId).map((m) => m.profile);
+      const effectiveMembers = circleMemberList.length > 0 ? circleMemberList : DEMO_PERSONAS;
 
       return getJudgeDemoRescueScenarios(
-        activeSession?.id || 'sess-cse-today',
+        activeSession?.id || 'sess-cse-active',
         circleId,
         rest,
-        circleMemberList,
+        effectiveMembers,
         cartItems
       );
     },
-    [sessions, members, currentUser, cartItems]
+    [sessions, getCircleMembers, cartItems]
   );
 
-  // Reset demo data
   const resetDemoData = useCallback(() => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(STORAGE_KEYS.USER);
+      localStorage.removeItem(STORAGE_KEYS.DEMO_MODE);
       localStorage.removeItem(STORAGE_KEYS.CIRCLES);
       localStorage.removeItem(STORAGE_KEYS.MEMBERS);
       localStorage.removeItem(STORAGE_KEYS.SESSIONS);
@@ -1784,6 +2317,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem(STORAGE_KEYS.VOTE_SESSIONS);
       localStorage.removeItem(STORAGE_KEYS.RESCUE_ISSUE);
     }
+    setIsDemoMode(false);
     setCurrentUser(GUEST_USER);
     setCircles([]);
     setMembers([]);
@@ -1793,6 +2327,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMealWindows([]);
     setVoteSessions([]);
     setActiveRescueIssue(null);
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.auth.signOut().catch(() => {});
+    }
 
     broadcastUpdate({
       circles: [],
@@ -1806,9 +2344,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [broadcastUpdate]);
 
-  // Import demo data for judges
   const importDemoData = useCallback(() => {
+    if (!DEMO_PRESETS_ENABLED) return;
+    // Isolate demo sandbox completely from any real Supabase authenticated session
+    if (isSupabaseConfigured && supabase) {
+      supabase.auth.signOut().catch(() => {});
+    }
+
+    setIsDemoMode(true);
     setCurrentUser(DEMO_PERSONAS[0]);
+    setPersonas(DEMO_PERSONAS);
     setCircles(INITIAL_CIRCLES);
     setMembers(INITIAL_CIRCLE_MEMBERS);
     setSessions(INITIAL_SESSIONS);
@@ -1820,7 +2365,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     if (typeof window !== 'undefined') {
       try {
+        localStorage.setItem(STORAGE_KEYS.DEMO_MODE, 'true');
         localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(DEMO_PERSONAS[0]));
+        localStorage.setItem(STORAGE_KEYS.PERSONAS, JSON.stringify(DEMO_PERSONAS));
         localStorage.setItem(STORAGE_KEYS.CIRCLES, JSON.stringify(INITIAL_CIRCLES));
         localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(INITIAL_CIRCLE_MEMBERS));
         localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(INITIAL_SESSIONS));
@@ -1828,6 +2375,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(INITIAL_DEMO_ORDERS));
         localStorage.setItem(STORAGE_KEYS.MEAL_WINDOWS, JSON.stringify(INITIAL_MEAL_WINDOWS));
         localStorage.setItem(STORAGE_KEYS.VOTE_SESSIONS, JSON.stringify(INITIAL_VOTE_SESSIONS));
+        localStorage.removeItem(STORAGE_KEYS.RESCUE_ISSUE);
       } catch {}
     }
 
@@ -1843,18 +2391,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [broadcastUpdate]);
 
-  const hasDemoData = circles.length > 0;
+  const hasDemoData = isDemoMode && circles.length > 0;
 
   const value = useMemo(
     () => ({
       currentUser,
       personas,
       switchPersona,
+      signInWithSupabaseUser,
       updateProfile,
       circles,
       createCircle,
       getCircle,
       getCircleByInviteCode,
+      resolveInviteCode,
       joinCircle,
       getUserCircles,
       getCircleMembers,
@@ -1876,6 +2426,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       getRestaurant,
       isRealtimeConnected,
       isSupabaseActive: isSupabaseConfigured,
+      supabaseSchemaStatus,
+      isDemoMode,
       resetDemoData,
       importDemoData,
       hasDemoData,
@@ -1889,14 +2441,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       getMealWindows,
       scheduleMealWindow,
       updateParticipation,
-      // Phase 6: CircleVote
       voteSessions,
       getActiveVoteSession,
       startCircleVote,
       castCircleVote,
       finalizeCircleVote,
       applyVoteWinnerToSession,
-      // Phase 6: Order Rescue AI
       activeRescueIssue,
       triggerOrderRescue,
       acceptRescueReplacement,
@@ -1911,14 +2461,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [
       currentUser,
       isAuthenticated,
+      isDemoMode,
+      supabaseSchemaStatus,
       logout,
       personas,
       switchPersona,
+      signInWithSupabaseUser,
       updateProfile,
       circles,
       createCircle,
       getCircle,
       getCircleByInviteCode,
+      resolveInviteCode,
       joinCircle,
       getUserCircles,
       getCircleMembers,
@@ -1971,14 +2525,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-[#FAFAF8] flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-[#FAFAF8] dark:bg-[#0b0f19] flex flex-col items-center justify-center p-4">
         <div className="w-14 h-14 rounded-3xl bg-gradient-to-tr from-[#FC8019] to-[#E86F0A] flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-[#FC8019]/20 animate-pulse">
           🍱
         </div>
-        <p className="mt-4 text-xs font-black tracking-wider text-[#171717] uppercase">
+        <p className="mt-4 text-xs font-black tracking-wider text-[#171717] dark:text-white uppercase">
           Swiggy Campus Circles
         </p>
-        <p className="text-[11px] text-[#737373] mt-1 font-medium">
+        <p className="text-[11px] text-[#737373] dark:text-slate-400 mt-1 font-medium">
           Loading campus squad...
         </p>
       </div>

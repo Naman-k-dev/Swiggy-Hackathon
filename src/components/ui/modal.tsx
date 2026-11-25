@@ -57,14 +57,14 @@ export function Modal({
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className={cn(
-              'relative z-10 w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl border border-charcoal-100 max-h-[90vh] overflow-y-auto',
+              'relative z-10 w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-charcoal-100 dark:border-slate-800 max-h-[90vh] overflow-y-auto text-charcoal-900 dark:text-slate-100',
               className
             )}
           >
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="absolute right-5 top-5 rounded-full p-1.5 text-charcoal-400 hover:bg-charcoal-100 hover:text-charcoal-700 transition"
+              className="absolute right-5 top-5 rounded-full p-1.5 text-charcoal-400 dark:text-slate-400 hover:bg-charcoal-100 dark:hover:bg-slate-800 hover:text-charcoal-700 dark:hover:text-white transition"
               aria-label="Close dialog"
             >
               <X className="h-5 w-5" />
@@ -74,12 +74,12 @@ export function Modal({
             {(title || description) && (
               <div className="mb-5 pr-6">
                 {title && (
-                  <h2 className="text-xl font-bold tracking-tight text-charcoal-900">
+                  <h2 className="text-xl font-bold tracking-tight text-charcoal-900 dark:text-white">
                     {title}
                   </h2>
                 )}
                 {description && (
-                  <p className="mt-1 text-sm text-charcoal-500">
+                  <p className="mt-1 text-sm text-charcoal-500 dark:text-slate-400">
                     {description}
                   </p>
                 )}
