@@ -14,51 +14,39 @@ import { Button } from '@/components/ui/button';
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden pt-8 pb-20 sm:pt-14 sm:pb-28 bg-[#FAFAF8] dark:bg-slate-950 transition-colors">
-      {/* Background Glows */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-gradient-to-tr from-orange-300/30 via-amber-200/20 to-transparent blur-[120px] -z-10 pointer-events-none rounded-full dark:opacity-20" />
-      <div className="absolute bottom-1/4 right-0 w-[400px] h-[400px] bg-gradient-to-br from-swiggy-orange/10 to-transparent blur-[100px] -z-10 pointer-events-none rounded-full dark:opacity-20" />
-
+    <section className="relative overflow-hidden pt-12 pb-20 sm:pt-20 sm:pb-32 bg-white dark:bg-slate-950 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-          {/* Left: Copy & Actions (7 cols) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+          {/* Left: Copy & Actions */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="lg:col-span-7 space-y-6 text-center lg:text-left"
+            transition={{ duration: 0.4 }}
+            className="lg:col-span-7 space-y-8 text-center lg:text-left"
           >
-            {/* Pill Banner */}
-            <div className="inline-flex items-center gap-2 glass-pill dark:bg-slate-900 dark:border-slate-800 px-4 py-2 rounded-full border border-white/40 shadow-glass text-xs font-semibold text-charcoal-800 dark:text-slate-200">
-              <span className="flex h-2 w-2 rounded-full bg-swiggy-orange animate-pulse shadow-[0_0_8px_rgba(252,128,25,0.6)]" />
-              <span className="text-swiggy-orange font-bold uppercase tracking-tight">Swiggy Food for Thought 2.0</span>
-              <span className="text-charcoal-300 dark:text-slate-700">|</span>
-              <span className="text-charcoal-700 dark:text-slate-300 font-bold flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-swiggy-orange" />
-                CircleMatch AI Live
-              </span>
+            {/* Pill */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-[10px] font-bold uppercase tracking-widest text-charcoal-400 dark:text-slate-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-swiggy-orange" />
+              <span>Swiggy Food for Thought 2.0</span>
             </div>
 
             {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-charcoal-900 dark:text-white tracking-tight leading-[1.1]">
-              Good Food. <br />
-              <span className="bg-gradient-to-r from-swiggy-orange via-amber-500 to-orange-600 bg-clip-text text-transparent">
-                Better Together.
-              </span>
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-charcoal-900 dark:text-white tracking-tight leading-[1.05]">
+              Better food, <br />
+              <span className="text-swiggy-orange">together.</span>
             </h1>
 
             {/* Subheadline */}
-            <p className="text-lg sm:text-xl text-charcoal-600 dark:text-slate-300 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-medium opacity-90">
+            <p className="text-lg text-charcoal-500 dark:text-slate-400 max-w-xl mx-auto lg:mx-0 leading-relaxed">
               Your college crew, your favorite food, one shared circle. Plan meals,
               order together, and skip the coordination chaos.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
               <Link href="/circles/create" className="w-full sm:w-auto">
-                <Button size="lg" className="w-full sm:w-auto shadow-highlight gap-2 font-bold text-base px-8 py-6 rounded-full transition-all hover:scale-105 active:scale-95 bg-gradient-to-r from-swiggy-orange to-orange-600 text-white">
-                  <span>Create Your Circle</span>
-                  <ArrowRight className="w-4 h-4" />
+                <Button size="lg" className="w-full sm:w-auto font-bold text-sm px-10 h-14 rounded-full bg-swiggy-orange hover:bg-swiggy-dark text-white border-none shadow-none transition-transform hover:scale-[1.02] active:scale-[0.98]">
+                  Create Circle
                 </Button>
               </Link>
 
@@ -66,26 +54,23 @@ export function HeroSection() {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="w-full sm:w-auto font-bold text-base px-8 py-6 rounded-full border-charcoal-200 dark:border-slate-700 glass-pill dark:bg-slate-900 dark:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800 transition-all hover:scale-105"
+                  className="w-full sm:w-auto font-bold text-sm px-10 h-14 rounded-full border-slate-200 dark:border-slate-800 text-charcoal-900 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
                 >
-                  See How It Works
+                  Learn More
                 </Button>
               </Link>
             </div>
 
             {/* Proof Points */}
-            <div className="pt-8 border-t border-charcoal-200/40 dark:border-slate-800 grid grid-cols-3 gap-6 max-w-lg mx-auto lg:mx-0 text-left">
+            <div className="pt-10 flex items-center justify-center lg:justify-start gap-12">
               <div>
-                <p className="text-3xl font-black text-charcoal-900 dark:text-white tracking-tighter">₹0</p>
-                <p className="text-[11px] text-charcoal-500 dark:text-slate-400 font-bold uppercase tracking-wide">Fee Above ₹400</p>
+                <p className="text-2xl font-bold text-charcoal-900 dark:text-white">₹0</p>
+                <p className="text-[10px] text-charcoal-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-1">Delivery Fee</p>
               </div>
+              <div className="w-px h-8 bg-slate-100 dark:bg-slate-800" />
               <div>
-                <p className="text-3xl font-black text-charcoal-900 dark:text-white tracking-tighter">100%</p>
-                <p className="text-[11px] text-charcoal-500 dark:text-slate-400 font-bold uppercase tracking-wide">Auto-Splitting</p>
-              </div>
-              <div>
-                <p className="text-3xl font-black text-charcoal-900 dark:text-white tracking-tighter">0 min</p>
-                <p className="text-[11px] text-charcoal-500 dark:text-slate-400 font-bold uppercase tracking-wide">WhatsApp Waste</p>
+                <p className="text-2xl font-bold text-charcoal-900 dark:text-white">100%</p>
+                <p className="text-[10px] text-charcoal-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-1">Auto-Split</p>
               </div>
             </div>
           </motion.div>

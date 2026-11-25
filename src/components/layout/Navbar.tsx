@@ -49,46 +49,40 @@ export function Navbar() {
 
   const navLinks = [
     { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Explore Circles', href: '/dashboard#circles' },
-    { label: 'How It Works', href: '/#how-it-works' },
+    { label: 'Explore', href: '/dashboard#circles' },
+    { label: 'Guide', href: '/#how-it-works' },
   ];
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-xl border-b border-charcoal-200/50 dark:border-slate-800/80 transition-colors">
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
-            {/* Brand Logo & Concept Pill */}
+          <div className="flex items-center justify-between h-14">
+            {/* Brand Logo */}
             <div className="flex items-center gap-3">
-              <Link href="/" className="flex items-center gap-2.5 group">
-                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-swiggy-orange to-amber-500 flex items-center justify-center text-white font-black text-xl shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
+              <Link href="/" className="flex items-center gap-2 group">
+                <div className="w-8 h-8 rounded-lg bg-swiggy-orange flex items-center justify-center text-white font-black text-lg transition-transform group-hover:scale-105">
                   S
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-extrabold text-lg text-charcoal-900 dark:text-white tracking-tight leading-tight flex items-center gap-1.5">
+                  <span className="font-bold text-base text-charcoal-900 dark:text-white tracking-tight leading-tight">
                     Campus Circles
-                    <span className="text-[10px] font-bold bg-orange-100 dark:bg-orange-500/20 text-swiggy-orange px-1.5 py-0.5 rounded-full border border-orange-200 dark:border-orange-500/30">
-                      Concept
-                    </span>
-                  </span>
-                  <span className="text-[10px] text-charcoal-400 dark:text-slate-400 font-medium leading-none">
-                    Swiggy Food for Thought 2.0
                   </span>
                 </div>
               </Link>
             </div>
 
-            {/* Desktop Navigation (Only show dashboard/circles if logged in) */}
+            {/* Desktop Navigation */}
             {isAuthenticated && (
-              <nav className="hidden lg:flex items-center gap-6">
+              <nav className="hidden lg:flex items-center gap-8">
                 {navLinks.map((link) => {
                   const isActive = pathname === link.href;
                   return (
                     <Link
                       key={link.href}
                       href={link.href}
-                      className={`text-xs font-bold uppercase tracking-wider transition-colors hover:text-swiggy-orange ${
-                        isActive ? 'text-swiggy-orange' : 'text-charcoal-600 dark:text-slate-300'
+                      className={`text-[11px] font-bold uppercase tracking-widest transition-colors hover:text-swiggy-orange ${
+                        isActive ? 'text-swiggy-orange' : 'text-charcoal-400 dark:text-slate-400'
                       }`}
                     >
                       {link.label}
@@ -99,53 +93,29 @@ export function Navbar() {
             )}
 
             {/* Right Action Tools */}
-            <div className="hidden md:flex items-center gap-2.5">
-              {/* Judge Guide */}
-              <button
-                onClick={() => setGuideOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-swiggy-orange bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 hover:bg-orange-100 dark:hover:bg-orange-500/20 transition-all"
-                title="Judge Journey Guide"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Judge Guide</span>
-              </button>
-
-              {/* Theme Toggle Button */}
+            <div className="hidden md:flex items-center gap-4">
+              {/* Theme Toggle */}
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-xl bg-charcoal-50 dark:bg-slate-800 text-charcoal-700 dark:text-slate-200 border border-charcoal-200 dark:border-slate-700 hover:bg-orange-50 dark:hover:bg-slate-700 transition"
+                className="p-1.5 rounded-lg text-charcoal-400 dark:text-slate-500 hover:text-swiggy-orange dark:hover:text-swiggy-orange transition-colors"
                 title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
               >
                 {theme === 'light' ? (
-                  <Moon className="w-4 h-4 text-slate-700" />
+                  <Moon className="w-4 h-4" />
                 ) : (
-                  <Sun className="w-4 h-4 text-amber-400" />
+                  <Sun className="w-4 h-4" />
                 )}
               </button>
 
               {isAuthenticated && currentUser ? (
                 <>
-                  {/* Quick Action: Create Circle */}
-                  <Link href="/circles/create">
-                    <Button
-                      size="sm"
-                      className="rounded-xl gap-1.5 text-xs font-bold bg-gradient-to-r from-swiggy-orange to-amber-500 hover:from-swiggy-hover hover:to-amber-600 text-white shadow-md shadow-orange-500/20 border-none"
-                    >
-                      <PlusCircle className="w-3.5 h-3.5" />
-                      <span>Create Circle</span>
-                    </Button>
-                  </Link>
-
-                  {/* Active Group Cart (Only shown when logged in and active circle exists) */}
+                  {/* Active Group Cart */}
                   {activeCircle && (
                     <Link href={`/circles/${activeCircle.id}`}>
-                      <button
-                        className="relative px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-charcoal-50 dark:bg-slate-800 text-charcoal-800 dark:text-slate-200 border border-charcoal-200 dark:border-slate-700 hover:border-charcoal-300 dark:hover:border-slate-600 transition"
-                      >
-                        <ShoppingBag className="w-3.5 h-3.5 text-swiggy-orange" />
-                        <span>Cart</span>
+                      <button className="relative p-1.5 text-charcoal-400 dark:text-slate-500 hover:text-swiggy-orange transition-colors">
+                        <ShoppingBag className="w-4 h-4" />
                         {activeCartCount > 0 && (
-                          <span className="bg-swiggy-orange text-white text-[10px] font-black px-1.5 py-0.2 rounded-full">
+                          <span className="absolute -top-1 -right-1 bg-swiggy-orange text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
                             {activeCartCount}
                           </span>
                         )}
@@ -153,71 +123,68 @@ export function Navbar() {
                     </Link>
                   )}
 
-                  {/* User Profile Pill & Dropdown */}
+                  {/* User Profile */}
                   <div className="relative">
                     <button
                       onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                      className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl bg-charcoal-50 dark:bg-slate-800 border border-charcoal-200 dark:border-slate-700 hover:border-charcoal-300 dark:hover:border-slate-600 transition"
+                      className="flex items-center gap-2 group"
                     >
-                      <div className="w-6 h-6 rounded-full overflow-hidden relative border border-orange-300 dark:border-slate-600 flex-shrink-0">
+                      <div className="w-7 h-7 rounded-full overflow-hidden border border-slate-100 dark:border-slate-800 transition-colors group-hover:border-swiggy-orange">
                         <Image
                           src={currentUser.avatar_url || ''}
                           alt={currentUser.full_name}
-                          width={24}
-                          height={24}
+                          width={28}
+                          height={28}
                           className="object-cover"
                           unoptimized
                         />
                       </div>
-                      <span className="text-xs font-bold text-charcoal-900 dark:text-white max-w-[100px] truncate">
-                        {currentUser.full_name.split(' ')[0]}
-                      </span>
-                      <ChevronDown className="w-3 h-3 text-charcoal-400 dark:text-slate-400" />
                     </button>
 
                     {userDropdownOpen && (
-                      <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-charcoal-200 dark:border-slate-800 p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                        <div className="pb-3 border-b border-charcoal-100 dark:border-slate-800">
-                          <p className="font-extrabold text-sm text-charcoal-900 dark:text-white">{currentUser.full_name}</p>
-                          <p className="text-xs text-charcoal-500 dark:text-slate-400">{currentUser.college}</p>
-                          <div className="mt-2 flex items-center gap-1.5">
-                            <Badge
-                              variant={currentUser.dietary_pref === 'VEG' ? 'success' : 'danger'}
-                              size="sm"
-                            >
-                              {currentUser.dietary_pref}
-                            </Badge>
-                            <Badge variant="outline" size="sm" className="dark:border-slate-700 dark:text-slate-300 text-[10px]">
-                              ₹{currentUser.preferred_budget}/meal
-                            </Badge>
-                          </div>
+                      <div className="absolute right-0 mt-3 w-56 rounded-xl bg-white dark:bg-slate-900 shadow-xl border border-slate-100 dark:border-slate-800 p-2 z-50">
+                        <div className="px-3 py-2 border-b border-slate-50 dark:border-slate-800">
+                          <p className="font-bold text-xs text-charcoal-900 dark:text-white truncate">{currentUser.full_name}</p>
+                          <p className="text-[10px] text-charcoal-400 dark:text-slate-500 truncate">{currentUser.college}</p>
                         </div>
-                        <div className="pt-2 space-y-1">
+                        <div className="py-1">
+                          <button
+                            onClick={() => {
+                              setUserDropdownOpen(false);
+                              setGuideOpen(true);
+                            }}
+                            className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs font-medium text-charcoal-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-swiggy-orange" />
+                            <span>Judge Guide</span>
+                          </button>
                           <button
                             onClick={() => {
                               setUserDropdownOpen(false);
                               setAnalyticsOpen(true);
                             }}
-                            className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs font-medium text-charcoal-700 dark:text-slate-300 hover:bg-charcoal-50 dark:hover:bg-slate-800 rounded-xl transition"
+                            className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs font-medium text-charcoal-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition"
                           >
                             <BarChart3 className="w-3.5 h-3.5 text-swiggy-orange" />
-                            <span>AI Metrics Telemetry</span>
+                            <span>AI Analytics</span>
                           </button>
                           <Link
-                            href="/onboarding"
+                            href="/circles/create"
                             onClick={() => setUserDropdownOpen(false)}
-                            className="block px-3 py-2 text-xs font-medium text-charcoal-700 dark:text-slate-300 hover:bg-charcoal-50 dark:hover:bg-slate-800 rounded-xl transition"
+                            className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-charcoal-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition"
                           >
-                            Edit Preferences
+                            <PlusCircle className="w-3.5 h-3.5 text-swiggy-orange" />
+                            <span>Create Circle</span>
                           </Link>
+                          <div className="h-px bg-slate-50 dark:border-slate-800 my-1" />
                           <button
                             onClick={() => {
                               setUserDropdownOpen(false);
                               logout();
                             }}
-                            className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition"
+                            className="w-full text-left px-3 py-2 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition"
                           >
-                            <span>Sign Out</span>
+                            Sign Out
                           </button>
                         </div>
                       </div>
@@ -225,32 +192,37 @@ export function Navbar() {
                   </div>
                 </>
               ) : (
-                <div className="flex items-center gap-2">
-                  <Link href="/auth">
-                    <Button
-                      size="sm"
-                      className="rounded-xl px-4 text-xs font-bold bg-swiggy-orange hover:bg-swiggy-dark text-white shadow-md shadow-orange-500/20"
-                    >
-                      Login / Register
-                    </Button>
-                  </Link>
-                </div>
+                <Link href="/auth">
+                  <Button
+                    size="sm"
+                    className="rounded-lg px-4 text-xs font-bold bg-swiggy-orange hover:bg-swiggy-dark text-white border-none h-8"
+                  >
+                    Login
+                  </Button>
+                </Link>
               )}
             </div>
 
             {/* Mobile Actions */}
-            <div className="flex md:hidden items-center gap-2">
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-xl bg-charcoal-50 dark:bg-slate-800 text-charcoal-700 dark:text-slate-200 border border-charcoal-200 dark:border-slate-700"
-              >
-                {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4 text-amber-400" />}
-              </button>
+            <div className="flex md:hidden items-center gap-3">
+              {isAuthenticated && activeCircle && (
+                <Link href={`/circles/${activeCircle.id}`}>
+                  <button className="relative p-1.5 text-charcoal-400 dark:text-slate-500">
+                    <ShoppingBag className="w-4 h-4" />
+                    {activeCartCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-swiggy-orange text-white text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center">
+                        {activeCartCount}
+                      </span>
+                    )}
+                  </button>
+                </Link>
+              )}
+
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 text-charcoal-700 dark:text-slate-300 hover:text-charcoal-900 dark:hover:text-white hover:bg-charcoal-100 dark:hover:bg-slate-800 rounded-xl"
+                className="p-1.5 text-charcoal-400 dark:text-slate-500 hover:text-swiggy-orange transition-colors"
               >
-                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
             </div>
           </div>
