@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button';
 
 export default function AuthPage() {
   const router = useRouter();
-  const { addProfile } = useApp();
+  const { addProfile, signInWithSupabaseUser, importDemoData } = useApp();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
@@ -68,19 +68,17 @@ export default function AuthPage() {
 
           if (error) throw error;
 
-          // Set user profile in state
-          addProfile({
-            full_name: fullName.trim(),
-            college: college.trim(),
-            dietary_preference: dietaryPref,
-            preferred_budget: Number(budget),
-          });
-
-          if (data.session) {
+          if (data.user && data.session) {
+            await signInWithSupabaseUser(data.user, {
+              full_name: fullName.trim(),
+              college: college.trim(),
+              dietary_preference: dietaryPref,
+              preferred_budget: Number(budget),
+            });
             setSuccessMsg('Account created! Entering your campus circles...');
             setTimeout(() => router.push('/dashboard'), 700);
           } else {
-            setSuccessMsg('Account created successfully! Check your email to confirm or sign in directly.');
+            setSuccessMsg('Account created! Check your email to confirm your address, then sign in.');
           }
         } else {
           addProfile({
@@ -103,15 +101,7 @@ export default function AuthPage() {
           if (error) throw error;
 
           if (data.user) {
-            const userMeta = data.user.user_metadata || {};
-            const profileName = userMeta.full_name || email.split('@')[0] || 'Member';
-            const userCollege = userMeta.college || 'Campus';
-            addProfile({
-              full_name: profileName,
-              college: userCollege,
-              dietary_preference: userMeta.dietary_pref || 'flexible',
-              preferred_budget: userMeta.preferred_budget || 250,
-            });
+            await signInWithSupabaseUser(data.user);
             setSuccessMsg('Signed in! Welcome back.');
             setTimeout(() => router.push('/dashboard'), 600);
           }
@@ -265,7 +255,7 @@ export default function AuthPage() {
                       required
                       value={college}
                       onChange={(e) => setCollege(e.target.value)}
-                      placeholder="e.g. IIT Delhi - Kumaon Hostel"
+                      placeholder="e.g. PW Institute of Innovation Noida"
                       className="w-full pl-10 pr-4 py-3 rounded-2xl border border-charcoal-200/90 dark:border-slate-700/80 bg-white/70 dark:bg-slate-800/70 backdrop-blur-md text-charcoal-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-swiggy-orange focus:border-transparent transition-all placeholder:text-charcoal-400 dark:placeholder:text-slate-500 shadow-inner"
                     />
                   </div>
@@ -368,8 +358,25 @@ export default function AuthPage() {
             </div>
           </form>
 
+          {/* Judge Demo Launcher (Isolated from real Supabase records) */}
+          {process.env.NEXT_PUBLIC_ENABLE_DEMO_PRESETS !== 'false' && (
+            <div className="mt-5 pt-4 border-t border-charcoal-100/70 dark:border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => {
+                  importDemoData();
+                  router.push('/dashboard');
+                }}
+                className="w-full py-2.5 px-4 rounded-2xl border border-orange-300/70 dark:border-orange-500/30 bg-orange-50/70 dark:bg-orange-500/10 hover:bg-orange-100/80 dark:hover:bg-orange-500/20 text-xs font-extrabold text-swiggy-dark dark:text-orange-300 transition flex items-center justify-center gap-2"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-swiggy-orange" />
+                <span>Competition Judge? Launch Isolated Sandbox Demo</span>
+              </button>
+            </div>
+          )}
+
           {/* Trust badges footer */}
-          <div className="mt-6 pt-5 border-t border-charcoal-100/70 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-charcoal-500 dark:text-slate-400 font-semibold">
+          <div className="mt-5 pt-4 border-t border-charcoal-100/70 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-charcoal-500 dark:text-slate-400 font-semibold">
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Secure Supabase Auth
             </span>

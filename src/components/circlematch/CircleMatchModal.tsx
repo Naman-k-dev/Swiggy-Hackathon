@@ -79,8 +79,9 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
   const [swappingUser, setSwappingUser] = useState<string | null>(null);
 
   // Phase 4: Data Source Selection (Swiggy Food MCP Live vs Campus Verified Demo)
-  const [dataSourceMode, setDataSourceMode] = useState<'live' | 'demo'>('live');
+  const [dataSourceMode, setDataSourceMode] = useState<'live' | 'demo'>('demo');
   const [showSwiggyCartSync, setShowSwiggyCartSync] = useState(false);
+  const [geminiMeta, setGeminiMeta] = useState<Record<string, { explanation: string; provider: 'gemini' | 'deterministic'; modelUsed?: string }>>({});
 
   // Initialize Member Preferences based on their profiles
   useEffect(() => {
@@ -206,6 +207,43 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
             accepted: true,
           }))
         );
+
+        // Progressive server-side Gemini explanation enhancement (non-blocking; deterministic math untouched)
+        matchResult.recommendations.forEach((rec) => {
+          fetch('/api/circlematch/explain', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'group_plan',
+              restaurantName: rec.restaurantName,
+              planType: rec.type,
+              groupSatisfactionScore: rec.groupSatisfactionScore,
+              totalRupees: Math.round(rec.subtotalPaise / 100),
+              memberPlans: rec.memberPlans.map((mp) => ({
+                userName: mp.userName,
+                dietaryPref: memberPrefs[mp.userId]?.dietaryPref || (mp.recommendedDish.isVeg ? 'VEG' : 'BOTH'),
+                budgetRupees: Math.round(mp.budgetPaise / 100),
+                dishName: mp.recommendedDish.dishName,
+                dishPriceRupees: Math.round(mp.dishCostPaise / 100),
+                matchReason: mp.recommendedDish.matchReason,
+              })),
+            }),
+          })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+              if (data?.explanation) {
+                setGeminiMeta((prev) => ({
+                  ...prev,
+                  [rec.id]: {
+                    explanation: data.explanation,
+                    provider: data.provider === 'gemini' ? 'gemini' : 'deterministic',
+                    modelUsed: data.modelUsed,
+                  },
+                }));
+              }
+            })
+            .catch(() => {});
+        });
       }
 
       setCurrentStep(3); // Show Results Cards
@@ -332,39 +370,39 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
           SCREEN 1: GROUP PREFERENCE SETUP
          ========================================================================= */}
       {currentStep === 1 && (
-        <div className="space-y-6">
+        <div className="space-y-6 text-charcoal-900 dark:text-slate-100">
           {/* Header */}
-          <div className="border-b border-charcoal-100 pb-4 pr-8">
+          <div className="border-b border-charcoal-100 dark:border-slate-800 pb-4 pr-8">
             <div className="flex items-center gap-2 mb-1">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-swiggy-light text-swiggy-dark font-extrabold text-[11px] uppercase tracking-wider">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-swiggy-light dark:bg-orange-500/20 text-swiggy-dark dark:text-orange-300 font-extrabold text-[11px] uppercase tracking-wider">
                 <Sparkles className="w-3.5 h-3.5 text-swiggy-orange animate-pulse" />
                 CircleMatch AI
               </span>
               <span className="text-xs text-charcoal-400">•</span>
-              <span className="text-xs font-bold text-charcoal-700">{circle?.name}</span>
+              <span className="text-xs font-bold text-charcoal-700 dark:text-slate-300">{circle?.name}</span>
             </div>
-            <h2 className="text-2xl font-black text-charcoal-900 tracking-tight">
+            <h2 className="text-2xl font-black text-charcoal-900 dark:text-white tracking-tight">
               Group Cravings & Budget Setup
             </h2>
-            <p className="text-xs text-charcoal-500 mt-1">
+            <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-1">
               Confirm each student&apos;s budget and cravings. The AI optimizer finds a single campus restaurant that satisfies everyone.
             </p>
 
             {/* Phase 4 Live MCP vs Demo Switcher */}
-            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-charcoal-100/60">
-              <span className="text-[11px] font-bold text-charcoal-500">Live Menu Provider:</span>
+            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-charcoal-100/60 dark:border-slate-800">
+              <span className="text-[11px] font-bold text-charcoal-500 dark:text-slate-400">Menu Catalog Source:</span>
               <button
                 type="button"
                 onClick={() => setDataSourceMode(dataSourceMode === 'live' ? 'demo' : 'live')}
                 className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold transition flex items-center gap-1.5 border ${
                   dataSourceMode === 'live'
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                    : 'bg-orange-50 text-orange-800 border-orange-200'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                    : 'bg-orange-50 dark:bg-orange-500/20 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-500/30'
                 }`}
-                title="Click to toggle between Swiggy Live Food MCP and Verified Campus Demo menus"
+                title="Toggle between Swiggy Food MCP API lookup (falls back to Campus Catalog when partner OAuth is unconfigured) and direct Campus Verified Catalog"
               >
                 <span className={`w-2 h-2 rounded-full ${dataSourceMode === 'live' ? 'bg-emerald-500 animate-pulse' : 'bg-swiggy-orange'}`} />
-                <span>{dataSourceMode === 'live' ? '🟢 Swiggy Food MCP (Live)' : '🏷️ Campus Verified Catalog'}</span>
+                <span>{dataSourceMode === 'live' ? 'Swiggy MCP API (Auto Fallback)' : '🏷️ Campus Verified Catalog'}</span>
               </button>
             </div>
           </div>
@@ -381,14 +419,14 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                   key={member.id}
                   className={`p-4 rounded-2xl border transition ${
                     isCurrentUser
-                      ? 'border-orange-300 bg-orange-50/40 shadow-xs'
-                      : 'border-charcoal-100 bg-white'
+                      ? 'border-orange-300 dark:border-orange-500/40 bg-orange-50/40 dark:bg-orange-500/10 shadow-xs'
+                      : 'border-charcoal-100 dark:border-slate-700 bg-white dark:bg-slate-800/70'
                   }`}
                 >
                   {/* Member Card Top */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-charcoal-100/80">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-charcoal-100/80 dark:border-slate-700">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full overflow-hidden relative border border-white shadow-xs flex-shrink-0">
+                      <div className="w-10 h-10 rounded-full overflow-hidden relative border border-white dark:border-slate-700 shadow-xs flex-shrink-0">
                         <Image
                           src={member.profile.avatar_url || ''}
                           alt={member.profile.full_name}
@@ -399,8 +437,8 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                         />
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-extrabold text-sm text-charcoal-900">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-extrabold text-sm text-charcoal-900 dark:text-white">
                             {member.profile.full_name}
                           </p>
                           {isCurrentUser && (
@@ -416,7 +454,7 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                             {pref.dietaryPref === 'VEG' ? 'Strictly Veg' : 'Non-Veg Allowed'}
                           </Badge>
                         </div>
-                        <p className="text-[11px] text-charcoal-500">
+                        <p className="text-[11px] text-charcoal-500 dark:text-slate-400">
                           {member.profile.academic_year}
                         </p>
                       </div>
@@ -424,7 +462,7 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
 
                     {/* Budget Preset Chips */}
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[11px] font-bold text-charcoal-500 mr-1">
+                      <span className="text-[11px] font-bold text-charcoal-500 dark:text-slate-400 mr-1">
                         Budget:
                       </span>
                       {[130, 180, 220, 260].map((b) => {
@@ -436,8 +474,8 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                             onClick={() => updateStudentPref(member.user_id, { budgetPaise: b * 100 })}
                             className={`px-2 py-0.5 rounded-lg text-xs font-bold transition ${
                               isSelected
-                                ? 'bg-charcoal-900 text-white shadow-xs'
-                                : 'bg-charcoal-100 text-charcoal-600 hover:bg-charcoal-200'
+                                ? 'bg-charcoal-900 dark:bg-swiggy-orange text-white shadow-xs'
+                                : 'bg-charcoal-100 dark:bg-slate-700 text-charcoal-600 dark:text-slate-200 hover:bg-charcoal-200 dark:hover:bg-slate-600'
                             }`}
                           >
                             ₹{b}
@@ -449,8 +487,8 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
 
                   {/* Cravings Selector */}
                   <div className="pt-3 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-charcoal-700 text-[11px]">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span className="font-bold text-charcoal-700 dark:text-slate-200 text-[11px]">
                         What is {member.profile.full_name.split(' ')[0]} craving?
                       </span>
                       <div className="flex items-center gap-2">
@@ -463,7 +501,7 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                             className={`text-[10px] px-2 py-0.5 rounded-md font-bold capitalize transition ${
                               pref.hungerLevel === hl
                                 ? 'bg-swiggy-orange text-white'
-                                : 'bg-charcoal-100 text-charcoal-600'
+                                : 'bg-charcoal-100 dark:bg-slate-700 text-charcoal-600 dark:text-slate-300'
                             }`}
                           >
                             {hl}
@@ -482,8 +520,8 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                             onClick={() => toggleCraving(member.user_id, craving)}
                             className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition ${
                               active
-                                ? 'border-swiggy-orange bg-swiggy-light text-swiggy-dark font-bold'
-                                : 'border-charcoal-200 bg-white text-charcoal-600 hover:bg-charcoal-50'
+                                ? 'border-swiggy-orange bg-swiggy-light dark:bg-orange-500/20 text-swiggy-dark dark:text-orange-300 font-bold'
+                                : 'border-charcoal-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-charcoal-600 dark:text-slate-300 hover:bg-charcoal-50 dark:hover:bg-slate-800'
                             }`}
                           >
                             {craving}
@@ -498,15 +536,15 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
           </div>
 
           {/* Allergy Safety Notice */}
-          <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200 text-amber-900 text-[11px] flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-[11px] flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <p>
               <strong>Allergen Notice:</strong> Recommendations filter declared menu ingredients, but demo campus canteens cannot be guaranteed allergen or cross-contact safe.
             </p>
           </div>
 
           {/* Bottom Actions */}
-          <div className="pt-2 flex items-center justify-between border-t border-charcoal-100">
+          <div className="pt-2 flex items-center justify-between border-t border-charcoal-100 dark:border-slate-800">
             <Button variant="ghost" size="sm" onClick={onClose} className="text-xs">
               Cancel
             </Button>
@@ -534,25 +572,25 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
           </div>
 
           <div>
-            <h3 className="text-2xl font-black text-charcoal-900 tracking-tight">
+            <h3 className="text-2xl font-black text-charcoal-900 dark:text-white tracking-tight">
               CircleMatch AI is Optimizing...
             </h3>
-            <p className="text-xs text-charcoal-500 mt-1">
+            <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-1">
               Evaluating multi-member constraints across 6 campus restaurants
             </p>
           </div>
 
           {/* Real progressive stages */}
-          <div className="space-y-3 text-left p-4 rounded-2xl bg-charcoal-50 border border-charcoal-100 text-xs">
-            <div className="flex items-center gap-2 text-emerald-700 font-bold">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <div className="space-y-3 text-left p-4 rounded-2xl bg-charcoal-50 dark:bg-slate-800 border border-charcoal-100 dark:border-slate-700 text-xs">
+            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Read preferences for {members.length} participating students</span>
             </div>
-            <div className="flex items-center gap-2 text-emerald-700 font-bold">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Strict vegetarian boundary isolation enforced</span>
             </div>
-            <div className="flex items-center gap-2 text-swiggy-dark font-bold animate-pulse">
+            <div className="flex items-center gap-2 text-swiggy-dark dark:text-orange-300 font-bold animate-pulse">
               <div className="w-4 h-4 rounded-full border-2 border-swiggy-orange border-t-transparent animate-spin" />
               <span>Evaluating individual budget limits & calculating group fairness...</span>
             </div>
@@ -564,18 +602,18 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
           SCREEN 3: AI RECOMMENDATION RESULTS (3 DISTINCT PLANS)
          ========================================================================= */}
       {currentStep === 3 && (
-        <div className="space-y-6">
-          <div className="border-b border-charcoal-100 pb-3 pr-8 flex items-center justify-between">
+        <div className="space-y-6 text-charcoal-900 dark:text-slate-100">
+          <div className="border-b border-charcoal-100 dark:border-slate-800 pb-3 pr-8 flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
                 <Badge variant="orange" size="sm" className="font-extrabold uppercase">
                   Top 3 AI Matches
                 </Badge>
-                <span className="text-xs text-charcoal-500 font-medium">
+                <span className="text-xs text-charcoal-500 dark:text-slate-400 font-medium">
                   for {circle?.name} ({members.length} members)
                 </span>
               </div>
-              <h2 className="text-2xl font-black text-charcoal-900 tracking-tight mt-1">
+              <h2 className="text-2xl font-black text-charcoal-900 dark:text-white tracking-tight mt-1">
                 Recommended Group Meal Plans
               </h2>
             </div>
@@ -592,10 +630,10 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
           </div>
 
           {recommendations.length === 0 ? (
-            <div className="p-8 text-center space-y-3 bg-red-50 rounded-2xl border border-red-200">
+            <div className="p-8 text-center space-y-3 bg-red-50 dark:bg-red-950/30 rounded-2xl border border-red-200 dark:border-red-900">
               <p className="text-2xl">⚠️</p>
-              <h4 className="font-bold text-red-900">No Single Restaurant Matched All Constraints</h4>
-              <p className="text-xs text-red-700 max-w-md mx-auto">
+              <h4 className="font-bold text-red-900 dark:text-red-200">No Single Restaurant Matched All Constraints</h4>
+              <p className="text-xs text-red-700 dark:text-red-300 max-w-md mx-auto">
                 The current combination of student budgets and strict cravings is too tight across all 6 campus menus. Try slightly increasing budgets or relaxing cravings.
               </p>
               <Button size="sm" onClick={() => setCurrentStep(1)}>
@@ -606,14 +644,16 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-[58vh] overflow-y-auto pr-1">
               {recommendations.map((plan) => {
                 const isBestOverall = plan.type === 'best_overall';
+                const geminiInfo = geminiMeta[plan.id];
+                const explanationText = geminiInfo?.explanation || plan.aiExplanation;
 
                 return (
                   <div
                     key={plan.id}
                     className={`rounded-3xl border p-5 flex flex-col justify-between transition-all group ${
                       isBestOverall
-                        ? 'border-swiggy-orange bg-gradient-to-b from-orange-50/50 to-white shadow-md ring-1 ring-orange-200'
-                        : 'border-charcoal-200 bg-white hover:border-charcoal-300 hover:shadow-card'
+                        ? 'border-swiggy-orange bg-gradient-to-b from-orange-50/50 to-white dark:from-orange-500/10 dark:to-slate-800 shadow-md ring-1 ring-orange-200 dark:ring-orange-500/30'
+                        : 'border-charcoal-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 hover:border-charcoal-300 dark:hover:border-slate-600 hover:shadow-card'
                     }`}
                   >
                     <div>
@@ -631,14 +671,14 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                           {plan.title}
                         </span>
 
-                        <div className="flex items-center gap-1 text-xs font-black text-charcoal-900 bg-charcoal-100 px-2 py-0.5 rounded-lg">
+                        <div className="flex items-center gap-1 text-xs font-black text-charcoal-900 dark:text-white bg-charcoal-100 dark:bg-slate-700 px-2 py-0.5 rounded-lg">
                           <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
                           <span>{plan.groupSatisfactionScore}% match</span>
                         </div>
                       </div>
 
                       {/* Restaurant Image & Info */}
-                      <div className="h-28 w-full rounded-2xl overflow-hidden relative mb-3 bg-charcoal-100">
+                      <div className="h-28 w-full rounded-2xl overflow-hidden relative mb-3 bg-charcoal-100 dark:bg-slate-700">
                         <Image
                           src={plan.restaurantImage}
                           alt={plan.restaurantName}
@@ -653,12 +693,21 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                         </div>
                       </div>
 
-                      <p className="text-xs text-charcoal-600 line-clamp-2 leading-relaxed mb-3">
-                        {plan.aiExplanation}
-                      </p>
+                      <div className="space-y-1 mb-3">
+                        {geminiInfo && (
+                          <span className="inline-block text-[9px] font-bold px-2 py-0.5 rounded-full bg-orange-50 dark:bg-orange-500/20 text-swiggy-dark dark:text-orange-300 border border-orange-200 dark:border-orange-500/30">
+                            {geminiInfo.provider === 'gemini'
+                              ? `✨ Gemini (${geminiInfo.modelUsed || 'Flash'})`
+                              : 'Deterministic Summary'}
+                          </span>
+                        )}
+                        <p className="text-xs text-charcoal-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
+                          {explanationText}
+                        </p>
+                      </div>
 
                       {/* Per-member Meal Snapshot */}
-                      <div className="space-y-1.5 py-2 border-t border-charcoal-100/80">
+                      <div className="space-y-1.5 py-2 border-t border-charcoal-100/80 dark:border-slate-700">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-charcoal-400">
                           Recommended Dishes:
                         </p>
@@ -667,7 +716,7 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                             key={mp.userId}
                             className="flex items-center justify-between text-xs py-0.5"
                           >
-                            <span className="text-charcoal-700 truncate max-w-[130px] font-medium flex items-center gap-1">
+                            <span className="text-charcoal-700 dark:text-slate-200 truncate max-w-[130px] font-medium flex items-center gap-1">
                               {mp.recommendedDish.isVeg ? (
                                 <span className="veg-icon !w-2.5 !h-2.5 scale-75" />
                               ) : (
@@ -675,7 +724,7 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                               )}
                               <span>{mp.recommendedDish.dishName}</span>
                             </span>
-                            <span className="font-mono text-charcoal-900 font-bold text-[11px]">
+                            <span className="font-mono text-charcoal-900 dark:text-white font-bold text-[11px]">
                               {formatPaise(mp.dishCostPaise)}
                             </span>
                           </div>
@@ -684,10 +733,10 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                     </div>
 
                     {/* Card Footer: Total & CTA */}
-                    <div className="mt-4 pt-3 border-t border-charcoal-100 flex items-center justify-between">
+                    <div className="mt-4 pt-3 border-t border-charcoal-100 dark:border-slate-700 flex items-center justify-between">
                       <div>
-                        <p className="text-[10px] text-charcoal-500 font-medium">Group Subtotal</p>
-                        <p className="text-base font-black text-charcoal-900">
+                        <p className="text-[10px] text-charcoal-500 dark:text-slate-400 font-medium">Group Subtotal</p>
+                        <p className="text-base font-black text-charcoal-900 dark:text-white">
                           {formatPaise(plan.subtotalPaise)}
                         </p>
                       </div>
@@ -714,9 +763,9 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
           SCREEN 4: DETAILED GROUP MEAL PLAN & INDIVIDUAL CUSTOMIZATION
          ========================================================================= */}
       {currentStep === 4 && selectedPlan && (
-        <div className="space-y-6">
+        <div className="space-y-6 text-charcoal-900 dark:text-slate-100">
           {/* Header */}
-          <div className="border-b border-charcoal-100 pb-3 pr-8 flex items-center justify-between">
+          <div className="border-b border-charcoal-100 dark:border-slate-800 pb-3 pr-8 flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
                 <button
@@ -726,11 +775,11 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                   ← Back to 3 Recommendations
                 </button>
                 <span className="text-xs text-charcoal-400">•</span>
-                <span className="text-xs font-bold text-charcoal-700">
+                <span className="text-xs font-bold text-charcoal-700 dark:text-slate-300">
                   {selectedPlan.restaurantName} ({selectedPlan.title})
                 </span>
               </div>
-              <h2 className="text-2xl font-black text-charcoal-900 tracking-tight mt-1">
+              <h2 className="text-2xl font-black text-charcoal-900 dark:text-white tracking-tight mt-1">
                 Personalized Dishes & Acceptance
               </h2>
             </div>
@@ -739,6 +788,17 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
               {selectedPlan.groupSatisfactionScore}% Satisfaction
             </Badge>
           </div>
+
+          {geminiMeta[selectedPlan.id] && (
+            <div className="p-3 rounded-2xl bg-orange-50/60 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/30 text-xs text-charcoal-800 dark:text-slate-200">
+              <span className="font-bold text-swiggy-dark dark:text-orange-300 mr-1.5">
+                {geminiMeta[selectedPlan.id].provider === 'gemini'
+                  ? `✨ Gemini (${geminiMeta[selectedPlan.id].modelUsed || 'Flash'}):`
+                  : '✨ Plan Summary:'}
+              </span>
+              {geminiMeta[selectedPlan.id].explanation}
+            </div>
+          )}
 
           {/* Member Interactive Cards */}
           <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
@@ -750,13 +810,13 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                   key={plan.userId}
                   className={`p-4 rounded-2xl border transition ${
                     plan.accepted
-                      ? 'border-emerald-200 bg-emerald-50/20'
-                      : 'border-charcoal-200 bg-charcoal-50 opacity-70'
+                      ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/20 dark:bg-emerald-950/20'
+                      : 'border-charcoal-200 dark:border-slate-700 bg-charcoal-50 dark:bg-slate-800/60 opacity-70'
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full overflow-hidden relative border border-white shadow-xs flex-shrink-0">
+                      <div className="w-10 h-10 rounded-full overflow-hidden relative border border-white dark:border-slate-700 shadow-xs flex-shrink-0">
                         <Image
                           src={plan.userAvatar || ''}
                           alt={plan.userName}
@@ -768,7 +828,7 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="font-extrabold text-sm text-charcoal-900">
+                          <p className="font-extrabold text-sm text-charcoal-900 dark:text-white">
                             {plan.userName}
                           </p>
                           {isCurrentUser && (
@@ -787,7 +847,7 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                           ) : (
                             <span className="non-veg-icon" />
                           )}
-                          <span className="font-bold text-sm text-charcoal-900">
+                          <span className="font-bold text-sm text-charcoal-900 dark:text-white">
                             {plan.recommendedDish.dishName}
                           </span>
                           <span className="font-black text-sm text-swiggy-orange">
@@ -795,7 +855,7 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                           </span>
                         </div>
 
-                        <p className="text-[11px] text-charcoal-500 mt-0.5">
+                        <p className="text-[11px] text-charcoal-500 dark:text-slate-400 mt-0.5">
                           ✨ Why: {plan.recommendedDish.matchReason}
                         </p>
                       </div>
@@ -850,17 +910,17 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
                   ?.alternativeDishes.map((alt) => (
                     <div
                       key={alt.dishId}
-                      className="p-3 rounded-2xl border border-charcoal-200 hover:border-swiggy-orange flex items-center justify-between cursor-pointer transition"
+                      className="p-3 rounded-2xl border border-charcoal-200 dark:border-slate-700 hover:border-swiggy-orange flex items-center justify-between cursor-pointer transition bg-white dark:bg-slate-800"
                       onClick={() => handleSwapDish(swappingUser, alt)}
                     >
                       <div className="flex items-center gap-2">
                         {alt.isVeg ? <span className="veg-icon" /> : <span className="non-veg-icon" />}
                         <div>
-                          <p className="font-bold text-xs text-charcoal-900">{alt.dishName}</p>
-                          <p className="text-[10px] text-charcoal-500">{alt.matchReason}</p>
+                          <p className="font-bold text-xs text-charcoal-900 dark:text-white">{alt.dishName}</p>
+                          <p className="text-[10px] text-charcoal-500 dark:text-slate-400">{alt.matchReason}</p>
                         </div>
                       </div>
-                      <span className="font-bold text-xs text-charcoal-900">
+                      <span className="font-bold text-xs text-charcoal-900 dark:text-white">
                         {formatPaise(alt.pricePaise)}
                       </span>
                     </div>
@@ -870,21 +930,21 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
           )}
 
           {/* Total & Commit to Cart */}
-          <div className="pt-3 border-t border-charcoal-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="pt-3 border-t border-charcoal-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-              <p className="text-xs text-charcoal-500 font-semibold">
+              <p className="text-xs text-charcoal-500 dark:text-slate-400 font-semibold">
                 Circle Total ({customizedPlans.filter((p) => p.accepted).length} accepted)
               </p>
               <div className="flex items-center gap-2">
-                <p className="text-xl font-black text-charcoal-900">
+                <p className="text-xl font-black text-charcoal-900 dark:text-white">
                   {formatPaise(
                     customizedPlans
                       .filter((p) => p.accepted)
                       .reduce((s, p) => s + p.dishCostPaise, 0)
                   )}
                 </p>
-                <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                  FREE Group Delivery
+                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
+                  FREE Delivery &gt; ₹400
                 </span>
               </div>
             </div>
@@ -908,23 +968,23 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
          ========================================================================= */}
       {currentStep === 5 && selectedPlan && (
         <div className="py-12 text-center space-y-5 max-w-md mx-auto">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl mx-auto shadow-md">
+          <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl mx-auto shadow-md">
             ✓
           </div>
 
           <div>
-            <h3 className="text-2xl font-black text-charcoal-900 tracking-tight">
+            <h3 className="text-2xl font-black text-charcoal-900 dark:text-white tracking-tight">
               Added to Circle Cart!
             </h3>
-            <p className="text-xs text-charcoal-500 mt-1">
+            <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-1">
               Dishes for {customizedPlans.filter((p) => p.accepted).length} students from{' '}
               <strong>{selectedPlan.restaurantName}</strong> are now live in the collaborative group cart.
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#FAFAF8] border border-charcoal-200 text-xs text-left space-y-1.5">
-            <p className="font-bold text-charcoal-800">Next Step:</p>
-            <p className="text-charcoal-600">
+          <div className="p-4 rounded-2xl bg-[#FAFAF8] dark:bg-slate-800 border border-charcoal-200 dark:border-slate-700 text-xs text-left space-y-1.5">
+            <p className="font-bold text-charcoal-800 dark:text-white">Next Step:</p>
+            <p className="text-charcoal-600 dark:text-slate-300">
               Review your shared cart with your circle mates, and have your Circle Admin lock and finalize the simulated order.
             </p>
           </div>
@@ -940,7 +1000,7 @@ export function CircleMatchModal({ isOpen, onClose, circleId }: CircleMatchModal
             <Button
               variant="outline"
               size="md"
-              className="w-full rounded-2xl font-bold text-xs border-orange-200 text-swiggy-dark hover:bg-orange-50 flex items-center justify-center gap-2"
+              className="w-full rounded-2xl font-bold text-xs border-orange-200 dark:border-orange-500/30 text-swiggy-dark dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-500/10 flex items-center justify-center gap-2"
               onClick={() => setShowSwiggyCartSync(true)}
             >
               <ShoppingBag className="w-4 h-4 text-swiggy-orange" />

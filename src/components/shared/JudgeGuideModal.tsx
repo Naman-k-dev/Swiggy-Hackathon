@@ -151,13 +151,37 @@ export function JudgeGuideModal({ isOpen, onClose }: JudgeGuideModalProps) {
             </div>
 
             <div className="p-3 rounded-xl bg-charcoal-50 dark:bg-slate-900 border border-charcoal-200 dark:border-slate-800 flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                🗳️
+              </span>
+              <div>
+                <p className="font-bold text-charcoal-900 dark:text-white text-xs">CircleVote Decision Room & Poll</p>
+                <p className="text-[11px] text-charcoal-500 dark:text-slate-400">
+                  Open <strong>CircleVote 🗳️</strong> inside any Circle to vote on top restaurant finalists, see real-time Borda + preference tie-breakers, and generate a Gemini explanation of why the winner fits.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-charcoal-50 dark:bg-slate-900 border border-charcoal-200 dark:border-slate-800 flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-rose-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                🛟
+              </span>
+              <div>
+                <p className="font-bold text-charcoal-900 dark:text-white text-xs">Order Rescue AI Guardrail</p>
+                <p className="text-[11px] text-charcoal-500 dark:text-slate-400">
+                  Open <strong>Order Rescue 🛟</strong> (or add a dish triggering a veg conflict / budget alert) to test deterministic item replacements paired with live Gemini explanations.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-charcoal-50 dark:bg-slate-900 border border-charcoal-200 dark:border-slate-800 flex items-start gap-3">
               <span className="w-6 h-6 rounded-full bg-swiggy-orange text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
                 4
               </span>
               <div>
                 <p className="font-bold text-charcoal-900 dark:text-white text-xs">Lock Cart & Simulated Checkout</p>
                 <p className="text-[11px] text-charcoal-500 dark:text-slate-400">
-                  Click <strong>Lock Cart</strong>, then <strong>Finalize & Place Order</strong>. Observe the simulated order tracking timeline and individual paise cost breakdown.
+                  Click <strong>Lock Cart</strong>, then <strong>Place Simulated Order</strong>. Observe the simulated order tracking timeline and individual paise cost breakdown.
                 </p>
               </div>
             </div>

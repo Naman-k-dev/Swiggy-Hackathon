@@ -27,7 +27,7 @@ export function Navbar() {
     currentUser,
     isAuthenticated,
     logout,
-    circles,
+    getUserCircles,
     getSession,
     cartItems,
     theme,
@@ -39,8 +39,9 @@ export function Navbar() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
-  // Check if active circle has an ongoing session
-  const activeCircle = circles[0];
+  // Check if any joined circle has an ongoing session
+  const userCircles = getUserCircles();
+  const activeCircle = userCircles.find((c) => Boolean(getSession(c.id))) || userCircles[0];
   const activeSession = activeCircle ? getSession(activeCircle.id) : null;
   const activeCartCount = activeSession
     ? cartItems.filter((i) => i.session_id === activeSession.id).length
@@ -303,20 +304,24 @@ export function Navbar() {
             )}
 
             <div className="space-y-1">
-              <Link
-                href="/dashboard"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2.5 text-sm font-medium text-charcoal-800 dark:text-slate-200 hover:bg-charcoal-50 dark:hover:bg-slate-800 rounded-xl"
-              >
-                Dashboard & Circles
-              </Link>
-              <Link
-                href="/circles/create"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2.5 text-sm font-bold text-swiggy-orange hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-xl"
-              >
-                + Create New Circle
-              </Link>
+              {isAuthenticated && (
+                <>
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-3 py-2.5 text-sm font-medium text-charcoal-800 dark:text-slate-200 hover:bg-charcoal-50 dark:hover:bg-slate-800 rounded-xl"
+                  >
+                    Dashboard & Circles
+                  </Link>
+                  <Link
+                    href="/circles/create"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-3 py-2.5 text-sm font-bold text-swiggy-orange hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-xl"
+                  >
+                    + Create New Circle
+                  </Link>
+                </>
+              )}
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);

@@ -1,9 +1,11 @@
 'use client';
 
-import React, { use, useState } from 'react';
+import React, { use, useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/store/demo-context';
+import { OrderRescueModal } from '@/components/rescue/OrderRescueModal';
 import {
   ArrowLeft,
   Star,
@@ -15,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatPaise, formatRupees } from '@/lib/utils';
+import confetti from 'canvas-confetti';
 
 interface MenuPageProps {
   params: Promise<{
@@ -28,6 +31,7 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
   const circleId = resolvedParams.id;
   const restaurantId = resolvedParams.restaurantId;
 
+  const router = useRouter();
   const {
     getCircle,
     getRestaurant,
@@ -36,8 +40,19 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
     isCircleAdmin,
     addToCart,
     currentUser,
+    isAuthenticated,
     getSessionCartItems,
+    activeRescueIssue,
+    triggerOrderRescue,
+    acceptRescueReplacement,
+    dismissRescueIssue,
   } = useApp();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/auth');
+    }
+  }, [isAuthenticated, router]);
 
   const circle = getCircle(circleId);
   const restaurant = getRestaurant(restaurantId);
@@ -45,6 +60,7 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
   const isAdmin = isCircleAdmin(circleId);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [rescueModalOpen, setRescueModalOpen] = useState(false);
 
   // If there is an active session, get its cart items
   const sessionCart = activeSession ? getSessionCartItems(activeSession.id) : [];
@@ -91,17 +107,41 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
       }
     }
 
-    addToCart(session.id, circleId, dish);
+    // Autonomous Order Rescue Guardrails:
+    // 1. Strict Vegetarian Mismatch interception (never silently add non-veg to a VEG profile)
+    if (currentUser.dietary_pref === 'VEG' && !dish.is_veg) {
+      triggerOrderRescue(
+        'dietary_conflict',
+        { id: dish.id, name: dish.name, price_paise: dish.price_paise },
+        `"${dish.name}" is non-vegetarian, which conflicts with your Strict Veg preference. Pick a verified veg alternative below.`,
+        false,
+        { circleId, affectedUser: currentUser, restaurantId }
+      );
+      setRescueModalOpen(true);
+      return;
+    }
+
+    // 2. Budget Exceeded interception -> Offer same-restaurant affordable alternatives before overspending
     const nextTotal = mySubtotalPaise + dish.price_paise;
     if (nextTotal > myBudgetPaise) {
-      setToastMessage(
-        `Added "${dish.name}" (⚠️ Exceeds your ₹${Math.round(myBudgetPaise / 100)} budget by ₹${Math.round((nextTotal - myBudgetPaise) / 100)})`
+      triggerOrderRescue(
+        'budget_exceeded',
+        { id: dish.id, name: dish.name, price_paise: dish.price_paise },
+        `Adding "${dish.name}" pushes your cart total to ${formatPaise(nextTotal)}, exceeding your ₹${Math.round(myBudgetPaise / 100)} budget.`,
+        false,
+        { circleId, affectedUser: currentUser, restaurantId }
       );
-      setTimeout(() => setToastMessage(null), 3500);
-    } else {
-      showToast(dish.name);
+      setRescueModalOpen(true);
+      return;
     }
+
+    addToCart(session.id, circleId, dish);
+    showToast(dish.name);
   };
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   if (!restaurant || !circle) {
     return (
@@ -192,8 +232,8 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
 
       {/* Session Status Banner */}
       {activeSession && activeSession.restaurant_id === restaurantId && (
-        <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-emerald-800">
+        <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
             <span className="font-bold">
               Active Circle Session Live! Any dish you add updates the group cart for {circle.name}.
@@ -201,7 +241,7 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
           </div>
 
           <Link href={`/circles/${circleId}`}>
-            <Button size="sm" variant="outline" className="text-xs font-bold border-emerald-300">
+            <Button size="sm" variant="outline" className="text-xs font-bold border-emerald-300 dark:border-emerald-700">
               Open Group Cart ({sessionCart.length} items)
             </Button>
           </Link>
@@ -341,6 +381,25 @@ export default function RestaurantMenuPage({ params }: MenuPageProps) {
           </div>
         </div>
       )}
+
+      <OrderRescueModal
+        isOpen={rescueModalOpen}
+        onClose={() => setRescueModalOpen(false)}
+        issue={activeRescueIssue}
+        currentUser={currentUser}
+        isAdmin={isAdmin}
+        restaurantName={restaurant.name}
+        onAcceptReplacement={(issue, alternative) => {
+          acceptRescueReplacement(issue, alternative);
+          setRescueModalOpen(false);
+          confetti({ particleCount: 50, spread: 60 });
+          showToast(alternative.dish_name);
+        }}
+        onDismiss={(issueId) => {
+          dismissRescueIssue(issueId);
+          setRescueModalOpen(false);
+        }}
+      />
     </div>
   );
 }

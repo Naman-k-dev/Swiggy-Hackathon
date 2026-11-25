@@ -28,6 +28,8 @@ export interface SwiggyAuthConfig {
 export interface SwiggyMCPStatus {
   isConnected: boolean;
   isLive: boolean;
+  isSandbox: boolean;
+  mode: 'live' | 'sandbox' | 'demo';
   provider: 'swiggy_mcp_live' | 'campus_verified_demo';
   statusMessage: string;
   authEndpoint: string;
@@ -81,10 +83,22 @@ export class SwiggyMCPService {
       clientId: process.env.SWIGGY_CLIENT_ID || '',
       clientSecret: process.env.SWIGGY_CLIENT_SECRET,
       redirectUri: process.env.SWIGGY_REDIRECT_URI || 'https://swiggyhackathon.vercel.app/api/auth/swiggy/callback',
-      scope: ['food.read', 'menu.read', 'cart.write'],
+      scope: ['mcp:tools', 'mcp:resources', 'mcp:prompts'],
       authBaseUrl: process.env.SWIGGY_AUTH_BASE_URL || 'https://mcp.swiggy.com/auth',
       mcpServerUrl: process.env.SWIGGY_MCP_SERVER_URL || 'https://mcp.swiggy.com/food',
     };
+  }
+
+  private hasLiveCredentials(): boolean {
+    return Boolean(
+      process.env.SWIGGY_CLIENT_ID &&
+      process.env.SWIGGY_CLIENT_ID !== 'demo_campus_client' &&
+      process.env.SWIGGY_CLIENT_SECRET
+    );
+  }
+
+  private isLiveAccessToken(accessToken?: string): boolean {
+    return Boolean(accessToken && !accessToken.startsWith('swiggy_mcp_sbx_') && this.hasLiveCredentials());
   }
 
   /**
@@ -143,7 +157,7 @@ export class SwiggyMCPService {
       response_type: 'code',
       client_id: this.config.clientId || 'demo_campus_client',
       redirect_uri: redirectUriOverride || this.config.redirectUri || 'http://localhost:3000/api/auth/swiggy/callback',
-      scope: (this.config.scope || ['food.read', 'menu.read', 'cart.write']).join(' '),
+      scope: (this.config.scope || ['mcp:tools', 'mcp:resources', 'mcp:prompts']).join(' '),
       state,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
@@ -163,13 +177,7 @@ export class SwiggyMCPService {
     const redirectUri = redirectUriOverride || this.config.redirectUri || 'http://localhost:3000/api/auth/swiggy/callback';
 
     // Check if we have live Swiggy credentials configured
-    const hasLiveCredentials = Boolean(
-      process.env.SWIGGY_CLIENT_ID &&
-      process.env.SWIGGY_CLIENT_ID !== 'demo_campus_client' &&
-      process.env.SWIGGY_CLIENT_SECRET
-    );
-
-    if (hasLiveCredentials) {
+    if (this.hasLiveCredentials()) {
       try {
         const bodyParams = new URLSearchParams({
           grant_type: 'authorization_code',
@@ -213,7 +221,7 @@ export class SwiggyMCPService {
       token_type: 'Bearer',
       expires_in: expiresIn,
       refresh_token: `swiggy_mcp_refresh_${Date.now()}`,
-      scope: 'food.read menu.read cart.write',
+      scope: 'mcp:tools mcp:resources mcp:prompts',
       expires_at: Date.now() + expiresIn * 1000,
     };
   }
@@ -234,28 +242,34 @@ export class SwiggyMCPService {
 
   /**
    * Returns current integration status and active provider
+   * Strictly separates genuine live partner OAuth from sandbox/demo mode.
    */
   getStatus(tokenPayload?: { access_token?: string; expires_at?: number }): SwiggyMCPStatus {
     const isTokenValid = Boolean(
       tokenPayload?.access_token &&
       (!tokenPayload.expires_at || tokenPayload.expires_at > Date.now())
     );
+    const isSandboxToken = Boolean(tokenPayload?.access_token?.startsWith('swiggy_mcp_sbx_'));
+    const hasLiveCreds = this.hasLiveCredentials();
 
-    const hasLiveCredentials = Boolean(
-      process.env.SWIGGY_CLIENT_ID &&
-      process.env.SWIGGY_CLIENT_ID !== 'demo_campus_client' &&
-      process.env.SWIGGY_CLIENT_SECRET
-    );
-
-    const isConnected = isTokenValid || hasLiveCredentials;
+    const isLive = Boolean(hasLiveCreds && isTokenValid && !isSandboxToken);
+    const isSandbox = Boolean(!isLive && isTokenValid && isSandboxToken);
+    const isConnected = isLive || isSandbox;
+    const mode: SwiggyMCPStatus['mode'] = isLive ? 'live' : isSandbox ? 'sandbox' : 'demo';
 
     return {
       isConnected,
-      isLive: isConnected,
-      provider: isConnected ? 'swiggy_mcp_live' : 'campus_verified_demo',
-      statusMessage: isConnected
-        ? 'Connected to Swiggy Food MCP (Builders Club Sandbox)'
-        : 'Swiggy MCP Sandbox offline. Using campus verified offline menu catalog.',
+      isLive,
+      isSandbox,
+      mode,
+      provider: isLive ? 'swiggy_mcp_live' : 'campus_verified_demo',
+      statusMessage: isLive
+        ? 'Connected to live Swiggy Food MCP via OAuth 2.1'
+        : isSandbox
+        ? 'Swiggy MCP OAuth 2.1 PKCE Sandbox active (live partner credentials unconfigured; using campus catalog)'
+        : hasLiveCreds
+        ? 'Swiggy partner credentials detected; authorize OAuth session to activate live menus'
+        : 'Live Swiggy partner credentials unconfigured. Using campus verified offline menu catalog.',
       authEndpoint: `${this.config.authBaseUrl}/authorize`,
       tokenEndpoint: `${this.config.authBaseUrl}/token`,
       supportedTools: [
@@ -331,11 +345,12 @@ export class SwiggyMCPService {
     source: 'swiggy_mcp_live' | 'campus_verified_demo';
   }> {
     const q = (options.query || '').trim().toLowerCase();
-    const lat = options.latitude ?? 17.5449;
-    const lng = options.longitude ?? 78.5718;
+    // Default coordinates centered at PW Institute of Innovation Noida (Greater Noida Knowledge Park)
+    const lat = options.latitude ?? 28.4744;
+    const lng = options.longitude ?? 77.5040;
 
-    // Attempt live MCP call if token or live credentials are present
-    if (options.accessToken || process.env.SWIGGY_CLIENT_ID) {
+    // Attempt live MCP call ONLY when real live credentials & non-sandbox token exist
+    if (this.isLiveAccessToken(options.accessToken)) {
       const mcpRes = await this.callMCPTool<{
         restaurants?: Array<Record<string, unknown>>;
         content?: Array<{ type: string; text: string }>;
@@ -389,8 +404,8 @@ export class SwiggyMCPService {
     menuCategories: MenuCategory[];
     source: 'swiggy_mcp_live' | 'campus_verified_demo';
   }> {
-    // 1. Try MCP tool
-    if (accessToken || process.env.SWIGGY_CLIENT_ID) {
+    // 1. Try live MCP tool ONLY when live partner credentials & non-sandbox token are configured
+    if (this.isLiveAccessToken(accessToken)) {
       const mcpRes = await this.callMCPTool<{
         restaurant?: Record<string, unknown>;
         menuCategories?: MenuCategory[];
@@ -438,7 +453,7 @@ export class SwiggyMCPService {
   ): Promise<{ items: MenuItem[]; source: 'swiggy_mcp_live' | 'campus_verified_demo' }> {
     const q = query.trim().toLowerCase();
 
-    if (options?.accessToken || process.env.SWIGGY_CLIENT_ID) {
+    if (this.isLiveAccessToken(options?.accessToken)) {
       const mcpRes = await this.callMCPTool<{
         items?: Array<Record<string, unknown>>;
         content?: Array<{ type: string; text: string }>;
@@ -447,8 +462,8 @@ export class SwiggyMCPService {
         {
           query,
           restaurantId: options?.restaurantId,
-          latitude: options?.latitude ?? 17.5449,
-          longitude: options?.longitude ?? 78.5718,
+          latitude: options?.latitude ?? 28.4744,
+          longitude: options?.longitude ?? 77.5040,
         },
         options?.accessToken
       );
@@ -495,8 +510,8 @@ export class SwiggyMCPService {
   ): Promise<SwiggyCartSyncResult> {
     const totalPaise = items.reduce((sum, item) => sum + item.pricePaise * item.quantity, 0);
 
-    // Call official MCP tool update_food_cart if token available
-    if (accessToken) {
+    // Call official MCP tool update_food_cart ONLY with genuine live Swiggy OAuth token
+    if (this.isLiveAccessToken(accessToken)) {
       const toolPayload = {
         restaurantId,
         items: items.map((i) => ({

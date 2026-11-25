@@ -28,8 +28,21 @@ export async function GET() {
   if (!accessToken) {
     return NextResponse.json({
       isConnected: false,
+      isLive: false,
+      mode: 'demo',
       message: 'Not authenticated with Swiggy Food MCP. Using simulated in-app cart.',
       cart: null,
+    });
+  }
+
+  if (accessToken.startsWith('swiggy_mcp_sbx_')) {
+    return NextResponse.json({
+      isConnected: true,
+      isLive: false,
+      mode: 'sandbox',
+      cart: null,
+      message: 'Swiggy MCP OAuth Sandbox session active (offline simulated cart).',
+      source: 'campus_verified_demo',
     });
   }
 
@@ -43,6 +56,8 @@ export async function GET() {
   if (res.success && res.result) {
     return NextResponse.json({
       isConnected: true,
+      isLive: true,
+      mode: 'live',
       cart: res.result,
       source: 'swiggy_mcp_live',
     });
@@ -50,8 +65,10 @@ export async function GET() {
 
   return NextResponse.json({
     isConnected: true,
+    isLive: false,
+    mode: 'demo',
     cart: null,
-    message: 'Cart is currently empty or sandbox session active.',
+    message: 'Cart is currently empty or MCP endpoint unavailable.',
     source: 'campus_verified_demo',
   });
 }

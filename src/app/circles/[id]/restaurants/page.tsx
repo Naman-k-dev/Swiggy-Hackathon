@@ -1,6 +1,6 @@
 'use client';
 
-import React, { use, useState, useMemo } from 'react';
+import React, { use, useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -32,7 +32,14 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
     getSession,
     startSession,
     isCircleAdmin,
+    isAuthenticated,
   } = useApp();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/auth');
+    }
+  }, [isAuthenticated, router]);
 
   const circle = getCircle(circleId);
   const activeSession = getSession(circleId);
@@ -138,7 +145,7 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by restaurant name, dish, or cuisine (e.g. rolls, biryani, dosa)..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-charcoal-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-charcoal-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-charcoal-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
             />
           </div>
 
@@ -148,8 +155,8 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
               onClick={() => setPureVegOnly(!pureVegOnly)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold border transition ${
                 pureVegOnly
-                  ? 'bg-veg-light text-veg-dark border-emerald-300 ring-1 ring-emerald-400'
-                  : 'bg-white text-charcoal-700 dark:text-slate-300 border-charcoal-200 dark:border-slate-700 hover:bg-charcoal-50 dark:bg-slate-800'
+                  ? 'bg-veg-light dark:bg-emerald-950/50 text-veg-dark dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 ring-1 ring-emerald-400'
+                  : 'bg-white dark:bg-slate-800 text-charcoal-700 dark:text-slate-300 border-charcoal-200 dark:border-slate-700 hover:bg-charcoal-50 dark:hover:bg-slate-700'
               }`}
             >
               <span className="veg-icon !w-3.5 !h-3.5" />
@@ -162,7 +169,7 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
                 setBudgetFilter(e.target.value === 'all' ? null : Number(e.target.value))
               }
               aria-label="Filter restaurants by budget"
-              className="px-3 py-2 rounded-2xl text-xs font-bold border border-charcoal-200 dark:border-slate-700 bg-white text-charcoal-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-swiggy-orange"
+              className="px-3 py-2 rounded-2xl text-xs font-bold border border-charcoal-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-charcoal-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-swiggy-orange"
             >
               <option value="all">Any Budget</option>
               <option value="130">Under ₹130 / one</option>
@@ -244,20 +251,20 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
 
                     {/* Pure Veg Tag */}
                     {restaurant.is_pure_veg && (
-                      <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm text-veg-dark text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                      <div className="absolute top-3 left-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm text-veg-dark dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
                         <span className="veg-icon !w-2.5 !h-2.5 scale-75" />
                         <span>Pure Veg</span>
                       </div>
                     )}
 
                     {/* Delivery Time */}
-                    <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm text-charcoal-800 dark:text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                    <div className="absolute top-3 right-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm text-charcoal-800 dark:text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
                       <Clock className="w-3 h-3 text-swiggy-orange" />
                       <span>{restaurant.delivery_time_min} mins</span>
                     </div>
 
                     {/* Data Source Badge */}
-                    <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur-sm text-[9px] font-bold px-2 py-0.5 rounded-full shadow-xs border border-charcoal-200/60 flex items-center gap-1">
+                    <div className="absolute bottom-3 right-3 bg-white/95 dark:bg-slate-900/95 text-charcoal-800 dark:text-slate-200 backdrop-blur-sm text-[9px] font-bold px-2 py-0.5 rounded-full shadow-xs border border-charcoal-200/60 dark:border-slate-700 flex items-center gap-1">
                       <span className={`w-1.5 h-1.5 rounded-full ${restaurant.source === 'swiggy_mcp_live' ? 'bg-emerald-500' : 'bg-swiggy-orange'}`} />
                       <span>{restaurant.source === 'swiggy_mcp_live' ? 'Swiggy Live' : 'Verified Campus'}</span>
                     </div>
@@ -269,7 +276,7 @@ export default function CircleRestaurantsPage({ params }: RestaurantsPageProps) 
                       <h3 className="font-extrabold text-base text-charcoal-900 dark:text-white leading-snug group-hover:text-swiggy-orange transition-colors">
                         {restaurant.name}
                       </h3>
-                      <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-lg text-xs font-bold flex-shrink-0">
+                      <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-lg text-xs font-bold flex-shrink-0">
                         <Star className="w-3 h-3 fill-emerald-600 text-emerald-600" />
                         <span>{restaurant.rating}</span>
                       </div>

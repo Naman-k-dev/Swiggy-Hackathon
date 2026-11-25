@@ -9,8 +9,8 @@ import { swiggyMCPService, SwiggyTokenResponse } from '@/lib/services/swiggy-mcp
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q') || '';
-  const lat = searchParams.get('lat') ? parseFloat(searchParams.get('lat')!) : 17.5449;
-  const lng = searchParams.get('lng') ? parseFloat(searchParams.get('lng')!) : 78.5718;
+  const lat = searchParams.get('lat') ? parseFloat(searchParams.get('lat')!) : 28.4744;
+  const lng = searchParams.get('lng') ? parseFloat(searchParams.get('lng')!) : 77.5040;
   const forceMode = searchParams.get('mode'); // 'demo' | 'live'
 
   const cookieStore = await cookies();

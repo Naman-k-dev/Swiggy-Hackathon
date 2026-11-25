@@ -50,7 +50,7 @@ const PRESET_MEALS: Array<{
     cutoffMinutes: 20,
     recurrence: 'weekdays',
     pickupPoint: 'Library Lawn Gate',
-    defaultRestId: 'rest-chai-bytes',
+    defaultRestId: 'rest-chai-maggi',
     description: 'Samosas, tea, and quick bites between study sessions',
   },
   {
@@ -60,8 +60,8 @@ const PRESET_MEALS: Array<{
     cutoffMinutes: 45,
     recurrence: 'daily',
     pickupPoint: 'Hostel Block C - Ground Floor Reception',
-    defaultRestId: 'rest-spice-symphony',
-    description: 'Daily biryani, rolls, and curries delivered right to the hostel gate',
+    defaultRestId: 'rest-night-canteen',
+    description: 'Daily noodles, momos, and fried rice delivered right to the hostel gate',
   },
 ];
 
@@ -125,23 +125,23 @@ export function MealWindowSchedulerModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Recurring Campus Meal Window">
-      <div className="space-y-6">
+      <div className="space-y-6 text-charcoal-800 dark:text-slate-200">
         {/* Banner */}
-        <div className="rounded-2xl bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 p-4 border border-orange-200/70">
+        <div className="rounded-2xl bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 dark:from-orange-950/30 dark:via-amber-950/20 dark:to-orange-950/30 p-4 border border-orange-200/70 dark:border-orange-900/50">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-swiggy-orange text-white flex items-center justify-center flex-shrink-0 shadow-xs">
               <Calendar className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-charcoal-900">
+                <h4 className="text-sm font-bold text-charcoal-900 dark:text-white">
                   Fixed Campus Break Scheduler
                 </h4>
                 <Badge variant="orange" size="sm">
                   Differentiator
                 </Badge>
               </div>
-              <p className="text-xs text-charcoal-600 mt-0.5 leading-relaxed">
+              <p className="text-xs text-charcoal-600 dark:text-slate-300 mt-0.5 leading-relaxed">
                 Schedule recurring meal windows tailored to PW IOI class breaks and hostel schedules.
                 Members can declare participation, set custom budgets, and beat delivery charges together.
               </p>
@@ -151,7 +151,7 @@ export function MealWindowSchedulerModal({
 
         {/* Quick Presets */}
         <div>
-          <label className="block text-xs font-bold text-charcoal-700 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300 uppercase tracking-wider mb-2">
             1. Select a Campus Preset or Custom
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -164,23 +164,23 @@ export function MealWindowSchedulerModal({
                   onClick={() => handleSelectPreset(idx)}
                   className={`p-3 rounded-2xl border text-left transition-all ${
                     isSelected
-                      ? 'border-swiggy-orange bg-swiggy-light/40 shadow-xs ring-1 ring-swiggy-orange'
-                      : 'border-charcoal-100 bg-white hover:border-charcoal-300'
+                      ? 'border-swiggy-orange bg-swiggy-light/40 dark:bg-orange-500/15 shadow-xs ring-1 ring-swiggy-orange'
+                      : 'border-charcoal-100 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-charcoal-300 dark:hover:border-slate-600'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-charcoal-900">
+                    <span className="text-xs font-black text-charcoal-900 dark:text-white">
                       {preset.mealType === 'Lunch' ? '🍱' : preset.mealType === 'Dinner' ? '🌙' : '☕'}{' '}
                       {preset.mealType}
                     </span>
-                    <span className="text-[10px] font-bold text-swiggy-dark bg-white px-2 py-0.5 rounded-full border border-orange-200">
+                    <span className="text-[10px] font-bold text-swiggy-dark dark:text-orange-300 bg-white dark:bg-slate-900 px-2 py-0.5 rounded-full border border-orange-200 dark:border-orange-500/30">
                       {preset.targetTime} IST
                     </span>
                   </div>
-                  <p className="text-[11px] font-medium text-charcoal-600 mt-1 line-clamp-1">
+                  <p className="text-[11px] font-medium text-charcoal-600 dark:text-slate-300 mt-1 line-clamp-1">
                     {preset.title}
                   </p>
-                  <p className="text-[10px] text-charcoal-400 mt-0.5 capitalize">
+                  <p className="text-[10px] text-charcoal-400 dark:text-slate-400 mt-0.5 capitalize">
                     {preset.recurrence} • {preset.cutoffMinutes}m cutoff
                   </p>
                 </button>
@@ -195,7 +195,7 @@ export function MealWindowSchedulerModal({
               className={`text-xs font-bold transition ${
                 selectedPresetIndex === null
                   ? 'text-swiggy-orange underline'
-                  : 'text-charcoal-500 hover:text-charcoal-800'
+                  : 'text-charcoal-500 dark:text-slate-400 hover:text-charcoal-800 dark:hover:text-white'
               }`}
             >
               + Create Custom Window
@@ -206,14 +206,14 @@ export function MealWindowSchedulerModal({
         {/* Configuration Form */}
         <form onSubmit={handleSchedule} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-charcoal-700 mb-1">
+            <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300 mb-1">
               Window Title
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-charcoal-200 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-charcoal-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-charcoal-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange"
               placeholder="e.g. CSE Batch Daily Lunch"
               required
             />
@@ -221,7 +221,7 @@ export function MealWindowSchedulerModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-charcoal-700 mb-1">
+              <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300 mb-1">
                 Meal Target Time (Asia/Kolkata)
               </label>
               <div className="relative">
@@ -230,20 +230,20 @@ export function MealWindowSchedulerModal({
                   type="time"
                   value={targetTime}
                   onChange={(e) => setTargetTime(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-charcoal-200 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-charcoal-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-charcoal-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-charcoal-700 mb-1">
+              <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300 mb-1">
                 Order Cutoff Lead Time
               </label>
               <select
                 value={cutoffMinutes}
                 onChange={(e) => setCutoffMinutes(Number(e.target.value))}
-                className="w-full px-3 py-2.5 rounded-xl border border-charcoal-200 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange bg-white"
+                className="w-full px-3 py-2.5 rounded-xl border border-charcoal-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange bg-white dark:bg-slate-800 text-charcoal-900 dark:text-white"
               >
                 <option value={15}>15 minutes before meal</option>
                 <option value={30}>30 minutes before meal (Recommended)</option>
@@ -255,7 +255,7 @@ export function MealWindowSchedulerModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-charcoal-700 mb-1">
+              <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300 mb-1">
                 Recurrence Pattern
               </label>
               <div className="relative">
@@ -263,7 +263,7 @@ export function MealWindowSchedulerModal({
                 <select
                   value={recurrence}
                   onChange={(e) => setRecurrence(e.target.value as RecurrencePattern)}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-charcoal-200 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange bg-white"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-charcoal-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange bg-white dark:bg-slate-800 text-charcoal-900 dark:text-white"
                 >
                   <option value="daily">Every Day (Including Weekends)</option>
                   <option value="weekdays">Mon to Fri (College Weekdays)</option>
@@ -273,7 +273,7 @@ export function MealWindowSchedulerModal({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-charcoal-700 mb-1">
+              <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300 mb-1">
                 Preferred Restaurant
               </label>
               <div className="relative">
@@ -281,7 +281,7 @@ export function MealWindowSchedulerModal({
                 <select
                   value={restaurantId}
                   onChange={(e) => setRestaurantId(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-charcoal-200 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange bg-white"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-charcoal-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange bg-white dark:bg-slate-800 text-charcoal-900 dark:text-white"
                 >
                   {DEMO_RESTAURANTS.map((r) => (
                     <option key={r.id} value={r.id}>
@@ -294,7 +294,7 @@ export function MealWindowSchedulerModal({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-charcoal-700 mb-1">
+            <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300 mb-1">
               Campus Collection Point (PW IOI Noida)
             </label>
             <div className="relative">
@@ -304,18 +304,18 @@ export function MealWindowSchedulerModal({
                 value={pickupPoint}
                 onChange={(e) => setPickupPoint(e.target.value)}
                 placeholder="e.g. Academic Block 1 - Main Portico"
-                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-charcoal-200 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange"
+                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-charcoal-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-charcoal-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange"
                 required
               />
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-charcoal-50 border border-charcoal-100 flex items-center justify-between">
+          <div className="p-3 rounded-xl bg-charcoal-50 dark:bg-slate-800/80 border border-charcoal-100 dark:border-slate-700 flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-charcoal-900">
+              <p className="text-xs font-bold text-charcoal-900 dark:text-white">
                 Activate ordering session immediately
               </p>
-              <p className="text-[10px] text-charcoal-500">
+              <p className="text-[10px] text-charcoal-500 dark:text-slate-400">
                 Opens the group cart right now with a {cutoffMinutes}-minute countdown
               </p>
             </div>

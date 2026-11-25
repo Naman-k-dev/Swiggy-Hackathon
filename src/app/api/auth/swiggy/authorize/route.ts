@@ -8,7 +8,9 @@ import { swiggyMCPService } from '@/lib/services/swiggy-mcp-service';
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const returnTo = searchParams.get('returnTo') || '/dashboard';
+  const rawReturnTo = searchParams.get('returnTo') || '/dashboard';
+  // Prevent open redirects by allowing relative app paths only
+  const returnTo = rawReturnTo.startsWith('/') && !rawReturnTo.startsWith('//') ? rawReturnTo : '/dashboard';
   const mode = searchParams.get('mode'); // optional 'sandbox' flag for instant competition evaluation
 
   const pkce = await swiggyMCPService.generatePKCEPair();
@@ -39,7 +41,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(callbackUrl);
   }
 
-  // Live Swiggy authorization URL
-  const authUrl = swiggyMCPService.buildAuthorizationUrl(pkce.codeChallenge, state);
+  // Live Swiggy authorization URL (fallback redirect matches current host when unset)
+  const fallbackRedirectUri = new URL('/api/auth/swiggy/callback', request.url).toString();
+  const authUrl = swiggyMCPService.buildAuthorizationUrl(
+    pkce.codeChallenge,
+    state,
+    process.env.SWIGGY_REDIRECT_URI || fallbackRedirectUri
+  );
   return NextResponse.redirect(authUrl);
 }

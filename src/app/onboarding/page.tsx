@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/store/demo-context';
 import { DEFAULT_CAMPUS_NAME } from '@/lib/data/mock-seed';
@@ -11,14 +11,22 @@ import { Sparkles } from 'lucide-react';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { currentUser, updateProfile } = useApp();
+  const { currentUser, isAuthenticated, updateProfile } = useApp();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/auth');
+    }
+  }, [isAuthenticated, router]);
 
   const [fullName, setFullName] = useState(currentUser.full_name);
   const [college, setCollege] = useState(currentUser.college);
-  const [academicYear, setAcademicYear] = useState(currentUser.academic_year || '3rd Year B.Tech');
+  const [academicYear, setAcademicYear] = useState(currentUser.academic_year || '3rd Year B.Tech / UG');
   const [dietaryPref, setDietaryPref] = useState<DietaryPref>(currentUser.dietary_pref || 'BOTH');
   const [preferredBudget, setPreferredBudget] = useState(currentUser.preferred_budget || 200);
   const [isSaved, setIsSaved] = useState(false);
+
+  if (!isAuthenticated) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,23 +68,23 @@ export default function OnboardingPage() {
     <div className="max-w-2xl mx-auto px-4 py-12">
       <div className="space-y-6">
         <div className="text-center space-y-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-swiggy-light text-swiggy-dark text-xs font-bold">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-swiggy-light dark:bg-orange-950/30 text-swiggy-dark dark:text-orange-300 text-xs font-bold">
             <Sparkles className="w-3.5 h-3.5 text-swiggy-orange" />
             Step 2 of 2: Student Profile
           </span>
-          <h1 className="text-3xl font-extrabold text-charcoal-900 tracking-tight">
+          <h1 className="text-3xl font-extrabold text-charcoal-900 dark:text-white tracking-tight">
             Customize Your Dining Preferences
           </h1>
-          <p className="text-sm text-charcoal-500 max-w-md mx-auto">
+          <p className="text-sm text-charcoal-500 dark:text-slate-400 max-w-md mx-auto">
             These help your circle suggest the right restaurants and stay within budget.
           </p>
         </div>
 
-        <Card className="rounded-3xl shadow-card p-6 sm:p-8">
+        <Card className="rounded-3xl shadow-card p-6 sm:p-8 dark:bg-slate-900 dark:border-slate-800">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Display Name */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700">
+              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 dark:text-slate-300">
                 Full Name
               </label>
               <input
@@ -84,20 +92,20 @@ export default function OnboardingPage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="e.g. Rahul Verma"
-                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
+                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-charcoal-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium"
                 required
               />
             </div>
 
             {/* College Name */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700">
+              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 dark:text-slate-300">
                 College Campus
               </label>
               <select
                 value={college}
                 onChange={(e) => setCollege(e.target.value)}
-                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium bg-white"
+                className="w-full px-4 py-3 rounded-2xl border border-charcoal-200 dark:border-slate-700 text-charcoal-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-swiggy-orange font-medium bg-white dark:bg-slate-800"
               >
                 {colleges.map((col) => (
                   <option key={col} value={col}>
@@ -120,8 +128,8 @@ export default function OnboardingPage() {
                     onClick={() => setAcademicYear(yr)}
                     className={`p-2.5 rounded-xl text-xs font-semibold border text-center transition ${
                       academicYear === yr
-                        ? 'border-swiggy-orange bg-swiggy-light text-swiggy-dark'
-                        : 'border-charcoal-200 hover:bg-charcoal-50 text-charcoal-700'
+                        ? 'border-swiggy-orange bg-swiggy-light dark:bg-orange-950/30 text-swiggy-dark dark:text-orange-300'
+                        : 'border-charcoal-200 dark:border-slate-700 hover:bg-charcoal-50 dark:hover:bg-slate-800 text-charcoal-700 dark:text-slate-300'
                     }`}
                   >
                     {yr}
@@ -132,7 +140,7 @@ export default function OnboardingPage() {
 
             {/* Dietary Preference */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700">
+              <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 dark:text-slate-300">
                 Dietary Preference
               </label>
               <div className="grid grid-cols-3 gap-3">
@@ -141,8 +149,8 @@ export default function OnboardingPage() {
                   onClick={() => setDietaryPref('VEG')}
                   className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition ${
                     dietaryPref === 'VEG'
-                      ? 'border-emerald-500 bg-emerald-50 font-bold text-emerald-800'
-                      : 'border-charcoal-200 hover:bg-charcoal-50 text-charcoal-700'
+                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 font-bold text-emerald-800 dark:text-emerald-300'
+                      : 'border-charcoal-200 dark:border-slate-700 hover:bg-charcoal-50 dark:hover:bg-slate-800 text-charcoal-700 dark:text-slate-300'
                   }`}
                 >
                   <span className="veg-icon !w-4 !h-4" />
@@ -154,8 +162,8 @@ export default function OnboardingPage() {
                   onClick={() => setDietaryPref('NON_VEG')}
                   className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition ${
                     dietaryPref === 'NON_VEG'
-                      ? 'border-red-500 bg-red-50 font-bold text-red-800'
-                      : 'border-charcoal-200 hover:bg-charcoal-50 text-charcoal-700'
+                      ? 'border-red-500 bg-red-50 dark:bg-red-950/30 font-bold text-red-800 dark:text-red-300'
+                      : 'border-charcoal-200 dark:border-slate-700 hover:bg-charcoal-50 dark:hover:bg-slate-800 text-charcoal-700 dark:text-slate-300'
                   }`}
                 >
                   <span className="non-veg-icon !w-4 !h-4" />
@@ -167,8 +175,8 @@ export default function OnboardingPage() {
                   onClick={() => setDietaryPref('BOTH')}
                   className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition ${
                     dietaryPref === 'BOTH'
-                      ? 'border-swiggy-orange bg-swiggy-light font-bold text-swiggy-dark'
-                      : 'border-charcoal-200 hover:bg-charcoal-50 text-charcoal-700'
+                      ? 'border-swiggy-orange bg-swiggy-light dark:bg-orange-950/30 font-bold text-swiggy-dark dark:text-orange-300'
+                      : 'border-charcoal-200 dark:border-slate-700 hover:bg-charcoal-50 dark:hover:bg-slate-800 text-charcoal-700 dark:text-slate-300'
                   }`}
                 >
                   <span className="text-base">🥗🍗</span>
@@ -180,7 +188,7 @@ export default function OnboardingPage() {
             {/* Per-Meal Budget */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700">
+                <label className="block text-xs font-bold uppercase tracking-wider text-charcoal-700 dark:text-slate-300">
                   Target Per-Meal Budget
                 </label>
                 <span className="text-sm font-black text-swiggy-orange">
@@ -196,7 +204,7 @@ export default function OnboardingPage() {
                 onChange={(e) => setPreferredBudget(Number(e.target.value))}
                 className="w-full accent-swiggy-orange cursor-pointer"
               />
-              <div className="flex justify-between text-[11px] text-charcoal-400 font-medium">
+              <div className="flex justify-between text-[11px] text-charcoal-400 dark:text-slate-400 font-medium">
                 <span>₹100 (Hostel Budget)</span>
                 <span>₹250 (Standard)</span>
                 <span>₹500 (Feast)</span>
