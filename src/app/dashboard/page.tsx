@@ -34,9 +34,12 @@ export default function DashboardPage() {
     getSession,
     getOrdersForUser,
     getCircleByInviteCode,
+    resolveInviteCode,
     joinCircle,
     importDemoData,
     hasDemoData,
+    supabaseSchemaStatus,
+    isDemoMode,
   } = useApp();
 
   const [demoLoadedMsg, setDemoLoadedMsg] = useState(false);
@@ -55,6 +58,8 @@ export default function DashboardPage() {
 
   const userCircles = getUserCircles();
   const userOrders = getOrdersForUser();
+  const waivedOrdersCount = userOrders.filter((o) => o.delivery_fee_paise === 0).length;
+  const estimatedDeliverySavedPaise = waivedOrdersCount * 3000;
 
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [inviteCodeInput, setInviteCodeInput] = useState('');
@@ -75,19 +80,19 @@ export default function DashboardPage() {
   });
   const activeSession = activeSessionCircle ? getSession(activeSessionCircle.id) : null;
 
-  const handleJoinByCode = (e: React.FormEvent) => {
+  const handleJoinByCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setJoinError(null);
     const code = inviteCodeInput.trim().toUpperCase();
     if (!code) return;
 
-    const circle = getCircleByInviteCode(code);
+    const circle = (await resolveInviteCode(code)) || getCircleByInviteCode(code);
     if (!circle) {
       setJoinError('Invalid invite code. Try "CAMPUS24" or "NIGHT300".');
       return;
     }
 
-    const res = joinCircle(circle.id);
+    const res = await joinCircle(circle.id, code);
     if (res.success) {
       setJoinModalOpen(false);
       setInviteCodeInput('');
@@ -136,7 +141,7 @@ export default function DashboardPage() {
             ) : (
               <>
                 <Database className="w-3.5 h-3.5 text-swiggy-orange" />
-                <span>Import Demo Data</span>
+                <span>{hasDemoData ? 'Re-import Demo Data' : 'Import Demo Data'}</span>
               </>
             )}
           </Button>
@@ -159,6 +164,31 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Cloud Migration Transparency Notice */}
+      {supabaseSchemaStatus === 'migrations_missing' && !isDemoMode && (
+        <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-amber-900 dark:text-amber-200">
+                Supabase Auth Live • Database Schema Migrations Pending
+              </p>
+              <p className="text-amber-800/90 dark:text-amber-300/90 mt-0.5">
+                Signed-in account authentication is active via Supabase, while shared circles and carts currently persist in this browser until SQL migrations in <code className="font-mono">supabase/migrations/</code> are applied.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleImportDemo}
+            className="rounded-xl text-xs font-bold border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/40 whitespace-nowrap"
+          >
+            Load Sample Sandbox
+          </Button>
+        </div>
+      )}
 
       {/* CircleMatch AI Feature Spotlight Banner */}
       <div className="rounded-[2.5rem] bg-gradient-to-r from-orange-500 via-amber-500 to-swiggy-orange text-white p-6 shadow-xl relative overflow-hidden">
@@ -242,7 +272,14 @@ export default function DashboardPage() {
         <div className="rounded-2xl glass-card dark:bg-slate-900 dark:border-slate-800 p-4 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-bold text-charcoal-500 dark:text-slate-400 uppercase tracking-wide">Delivery Fees Saved</p>
-            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">₹320</p>
+            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+              {formatPaise(estimatedDeliverySavedPaise)}
+            </p>
+            <p className="text-[10px] text-charcoal-400 dark:text-slate-500 mt-0.5">
+              {waivedOrdersCount > 0
+                ? `${waivedOrdersCount} group ${waivedOrdersCount === 1 ? 'order' : 'orders'} waived`
+                : '₹30 saved per ₹400+ group order'}
+            </p>
           </div>
           <div className="w-10 h-10 rounded-xl glass-pill dark:bg-slate-800 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
             <TrendingDown className="w-5 h-5" />

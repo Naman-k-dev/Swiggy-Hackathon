@@ -38,8 +38,10 @@ export function generateInviteCode(length = 6): string {
 /**
  * Calculate per-member breakdown with equitable distribution of delivery fees & platform discounts
  */
-export function calculateMemberSplit(
-  items: { user_id: string; user_name: string; user_avatar?: string; item_price_paise: number; quantity: number }[],
+export function calculateMemberSplit<
+  T extends { user_id: string; user_name: string; user_avatar?: string; item_price_paise: number; quantity: number }
+>(
+  items: T[],
   deliveryFeePaise: number,
   platformFeePaise: number,
   discountPaise: number
@@ -51,6 +53,7 @@ export function calculateMemberSplit(
     items_count: number;
     subtotal_paise: number;
     share_paise: number;
+    items: T[];
   }>();
 
   for (const item of items) {
@@ -63,10 +66,12 @@ export function calculateMemberSplit(
       items_count: 0,
       subtotal_paise: 0,
       share_paise: 0,
+      items: [] as T[],
     };
 
     existing.items_count += item.quantity;
     existing.subtotal_paise += itemTotal;
+    existing.items.push(item);
     memberMap.set(item.user_id, existing);
   }
 

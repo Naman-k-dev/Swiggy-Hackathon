@@ -77,7 +77,7 @@ export function HeroSection() {
             <div className="pt-8 border-t border-charcoal-200/40 dark:border-slate-800 grid grid-cols-3 gap-6 max-w-lg mx-auto lg:mx-0 text-left">
               <div>
                 <p className="text-3xl font-black text-charcoal-900 dark:text-white tracking-tighter">₹0</p>
-                <p className="text-[11px] text-charcoal-500 dark:text-slate-400 font-bold uppercase tracking-wide">Delivery Fee</p>
+                <p className="text-[11px] text-charcoal-500 dark:text-slate-400 font-bold uppercase tracking-wide">Fee Above ₹400</p>
               </div>
               <div>
                 <p className="text-3xl font-black text-charcoal-900 dark:text-white tracking-tighter">100%</p>
@@ -169,9 +169,11 @@ export function HeroSection() {
                     </p>
                   </div>
                 </div>
-                <Button className="w-full rounded-2xl font-bold py-6 shadow-highlight bg-gradient-to-r from-swiggy-orange to-orange-600 border-none text-white">
-                  Lock & Place Order
-                </Button>
+                <Link href="/dashboard" className="block">
+                  <Button className="w-full rounded-2xl font-bold py-6 shadow-highlight bg-gradient-to-r from-swiggy-orange to-orange-600 border-none text-white">
+                    Simulated Group Cart Preview
+                  </Button>
+                </Link>
               </div>
             </div>
 
@@ -185,8 +187,8 @@ export function HeroSection() {
                 <Wallet className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-[10px] font-bold text-charcoal-400 dark:text-slate-400 uppercase leading-none">Saved Today</p>
-                <p className="text-sm font-black text-charcoal-900 dark:text-white">₹45.00</p>
+                <p className="text-[10px] font-bold text-charcoal-400 dark:text-slate-400 uppercase leading-none">Sample Fee Saved</p>
+                <p className="text-sm font-black text-charcoal-900 dark:text-white">₹30.00+</p>
               </div>
             </motion.div>
           </motion.div>

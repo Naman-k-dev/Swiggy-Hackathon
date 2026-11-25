@@ -1,8 +1,9 @@
 'use client';
 
-import React, { use, useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/store/demo-context';
 import {
   CheckCircle2,
@@ -28,16 +29,23 @@ interface OrderPageProps {
 }
 
 export default function OrderTrackingPage({ params }: OrderPageProps) {
+  const router = useRouter();
   const resolvedParams = use(params);
   const circleId = resolvedParams.id;
   const orderId = resolvedParams.orderId;
 
-  const { getOrder, currentUser, getCircle } = useApp();
+  const { getOrder, currentUser, isAuthenticated, getCircle, markMealCollected, updateSettlementStatus } = useApp();
   const order = getOrder(orderId);
   const circle = getCircle(circleId);
 
   // Check if current user is admin (organizer) of the circle
   const isAdmin = circle?.admin_id === currentUser.id || order?.placed_by_id === currentUser.id;
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/auth');
+    }
+  }, [isAuthenticated, router]);
 
   // Simulated status progression
   const [currentStatus, setCurrentStatus] = useState<OrderStatus>(order?.status || 'placed');
@@ -57,10 +65,12 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
     setCurrentStatus(timelineSteps[nextIndex].key);
   };
 
+  if (!isAuthenticated) return null;
+
   if (!order) {
     return (
       <div className="max-w-md mx-auto py-20 text-center space-y-4">
-        <h2 className="text-xl font-bold">Order Not Found</h2>
+        <h2 className="text-xl font-bold text-charcoal-900 dark:text-white">Order Not Found</h2>
         <p className="text-xs text-charcoal-500 dark:text-slate-400">
           The order #{orderId} could not be located in this session.
         </p>
@@ -77,7 +87,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
       <div>
         <Link
           href={`/circles/${circleId}`}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-charcoal-500 dark:text-slate-400 hover:text-charcoal-900 dark:text-white mb-2 transition"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-charcoal-500 dark:text-slate-400 hover:text-charcoal-900 dark:hover:text-white mb-2 transition"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to {order.circle_name}
@@ -85,7 +95,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
       </div>
 
       {/* 1. Confirmation Hero Card */}
-      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
+      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-charcoal-100 dark:border-slate-800">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
@@ -206,10 +216,30 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
         </div>
       </div>
 
+      {/* 5. Campus Pickup Pass & Collection Checklist */}
+      <PickupPassCard
+        order={order}
+        currentUser={currentUser}
+        isAdmin={isAdmin}
+        onMarkMealCollected={(itemId) => {
+          markMealCollected(order.id, itemId);
+        }}
+      />
+
+      {/* 6. CirclePay Contribution & Settlement Tracker */}
+      <CirclePayTracker
+        order={order}
+        currentUser={currentUser}
+        isAdmin={isAdmin}
+        onUpdateSettlementStatus={(userId, newStatus) => {
+          updateSettlementStatus(order.id, userId, newStatus);
+        }}
+      />
+
       {/* 4. Member Contributions & Bill Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left: Per Member Individual Contributions */}
-        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-6 shadow-sm space-y-4">
+        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 p-6 shadow-sm space-y-4">
           <h3 className="font-extrabold text-base text-charcoal-900 dark:text-white flex items-center justify-between">
             <span>Member-wise Breakdown</span>
             <span className="text-xs font-semibold text-charcoal-500 dark:text-slate-400">
@@ -268,7 +298,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
         </div>
 
         {/* Right: Full Financial Summary */}
-        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 dark:border-slate-800 p-6 shadow-sm space-y-4">
+        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 p-6 shadow-sm space-y-4">
           <h3 className="font-extrabold text-base text-charcoal-900 dark:text-white">
             Order Total & Savings
           </h3>
@@ -313,30 +343,6 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
           </div>
         </div>
       </div>
-
-      {/* 5. Campus Pickup Pass */}
-      {currentStatus === 'delivered' && (
-        <PickupPassCard
-          order={order}
-          currentUser={currentUser}
-          isAdmin={isAdmin}
-          onMarkMealCollected={(itemId) => {
-            // This will be implemented in demo-context
-            console.log('Mark meal collected:', itemId);
-          }}
-        />
-      )}
-
-      {/* 6. CirclePay Settlement Tracker */}
-      <CirclePayTracker
-        order={order}
-        currentUser={currentUser}
-        isAdmin={isAdmin}
-        onUpdateSettlementStatus={(userId, newStatus) => {
-          // This will be implemented in demo-context
-          console.log('Update settlement:', userId, newStatus);
-        }}
-      />
     </div>
   );
 }

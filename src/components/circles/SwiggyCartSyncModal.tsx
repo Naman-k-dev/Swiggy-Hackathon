@@ -107,34 +107,34 @@ export function SwiggyCartSyncModal({
       description="Transfer verified group items into your authenticated Swiggy mobile app cart."
       className="max-w-xl"
     >
-      <div className="space-y-5 pt-2 text-charcoal-700">
+      <div className="space-y-5 pt-2 text-charcoal-700 dark:text-slate-200">
         {!syncResult ? (
           <>
             {/* Safety & Protocol Banner */}
-            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 space-y-1.5">
-              <div className="flex items-center gap-2 text-amber-800 font-bold text-xs">
-                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 space-y-1.5">
+              <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-xs">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                 Explicit Transfer Confirmation Required
               </div>
-              <p className="text-[11px] text-amber-900/80 leading-relaxed">
+              <p className="text-[11px] text-amber-900/80 dark:text-amber-200/90 leading-relaxed">
                 By confirming, the <strong>{totalItemsCount} collaborative items</strong> below from{' '}
-                <strong>{restaurantName}</strong> will be synced into your personal Swiggy cart via the official{' '}
-                <code className="bg-white/80 px-1 py-0.5 rounded font-mono text-[10px]">update_food_cart</code> MCP tool.
+                <strong>{restaurantName}</strong> will be synced via the{' '}
+                <code className="bg-white/80 dark:bg-slate-800 px-1 py-0.5 rounded font-mono text-[10px]">update_food_cart</code> MCP schema (Sandbox simulation when live partner OAuth credentials are unset).
               </p>
             </div>
 
             {/* Cart Preview Breakdown */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-charcoal-700">
+              <div className="flex items-center justify-between text-xs font-bold text-charcoal-700 dark:text-slate-300">
                 <span>Items to Sync ({cartItems.length} distinct)</span>
                 <span className="text-swiggy-orange">{formatPaise(totalPaise)}</span>
               </div>
 
-              <div className="max-h-48 overflow-y-auto space-y-1.5 p-2 rounded-xl bg-charcoal-50 border border-charcoal-200">
+              <div className="max-h-48 overflow-y-auto space-y-1.5 p-2 rounded-xl bg-charcoal-50 dark:bg-slate-800/80 border border-charcoal-200 dark:border-slate-700">
                 {cartItems.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-white border border-charcoal-100 text-xs"
+                    className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-700 text-xs"
                   >
                     <div className="flex items-center gap-2">
                       <span
@@ -142,11 +142,11 @@ export function SwiggyCartSyncModal({
                           item.item_is_veg ? 'bg-emerald-500' : 'bg-red-500'
                         }`}
                       />
-                      <span className="font-semibold text-charcoal-900">{item.item_name}</span>
+                      <span className="font-semibold text-charcoal-900 dark:text-white">{item.item_name}</span>
                       <span className="text-charcoal-400">×{item.quantity}</span>
                       <span className="text-[10px] text-charcoal-400">({item.user_name})</span>
                     </div>
-                    <span className="font-bold text-charcoal-800">
+                    <span className="font-bold text-charcoal-800 dark:text-slate-200">
                       {formatPaise(item.item_price_paise * item.quantity)}
                     </span>
                   </div>
@@ -155,27 +155,27 @@ export function SwiggyCartSyncModal({
             </div>
 
             {/* Guardrail Checklist */}
-            <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-1 text-[11px] text-emerald-900">
+            <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 space-y-1 text-[11px] text-emerald-900 dark:text-emerald-200">
               <div className="flex items-center gap-1.5 font-bold">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 Competition Evaluation Guardrails Active:
               </div>
-              <p className="text-emerald-800">
+              <p className="text-emerald-800 dark:text-emerald-300">
                 • <strong>No Real Payment:</strong> No payment gateway is triggered. Checkout remains simulated.
               </p>
-              <p className="text-emerald-800">
-                • <strong>Zero Accidental Overwrite:</strong> Your personal cart is untouched until you click confirm.
+              <p className="text-emerald-800 dark:text-emerald-300">
+                • <strong>Zero Accidental Overwrite:</strong> Personal Swiggy accounts are untouched without live OAuth + confirmation.
               </p>
             </div>
 
             {error && (
-              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium">
+              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-300 font-medium">
                 {error}
               </div>
             )}
 
             {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-charcoal-100">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-charcoal-100 dark:border-slate-800">
               <Button variant="ghost" size="sm" onClick={handleReset} disabled={isSubmitting}>
                 Cancel
               </Button>
@@ -202,32 +202,32 @@ export function SwiggyCartSyncModal({
         ) : (
           /* Success Screen */
           <div className="space-y-5 text-center py-4">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-8 h-8" />
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-lg font-black text-charcoal-900">
-                Group Cart Successfully Transferred!
+              <h3 className="text-lg font-black text-charcoal-900 dark:text-white">
+                {syncResult.simulatedOnly ? 'Sandbox Cart Sync Verified!' : 'Group Cart Successfully Transferred!'}
               </h3>
-              <p className="text-xs text-charcoal-600 max-w-sm mx-auto">
+              <p className="text-xs text-charcoal-600 dark:text-slate-300 max-w-sm mx-auto">
                 {syncResult.message}
               </p>
             </div>
 
-            <div className="p-3 rounded-xl bg-charcoal-50 border border-charcoal-200 text-xs space-y-1 max-w-md mx-auto text-left">
+            <div className="p-3 rounded-xl bg-charcoal-50 dark:bg-slate-800 border border-charcoal-200 dark:border-slate-700 text-xs space-y-1 max-w-md mx-auto text-left">
               <div className="flex justify-between">
-                <span className="text-charcoal-500">Cart Identifier:</span>
-                <span className="font-mono font-bold text-charcoal-800">{syncResult.cartId}</span>
+                <span className="text-charcoal-500 dark:text-slate-400">Cart Identifier:</span>
+                <span className="font-mono font-bold text-charcoal-800 dark:text-white">{syncResult.cartId}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-charcoal-500">Synced Items:</span>
-                <span className="font-bold text-charcoal-800">{totalItemsCount} items ({formatPaise(totalPaise)})</span>
+                <span className="text-charcoal-500 dark:text-slate-400">Synced Items:</span>
+                <span className="font-bold text-charcoal-800 dark:text-white">{totalItemsCount} items ({formatPaise(totalPaise)})</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-charcoal-500">Sync Mode:</span>
-                <span className="font-bold text-emerald-600">
-                  {syncResult.simulatedOnly ? 'Sandbox Verified Mock' : 'Live Swiggy Account'}
+                <span className="text-charcoal-500 dark:text-slate-400">Sync Mode:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                  {syncResult.simulatedOnly ? 'Sandbox Schema Simulation' : 'Live Swiggy Account'}
                 </span>
               </div>
             </div>

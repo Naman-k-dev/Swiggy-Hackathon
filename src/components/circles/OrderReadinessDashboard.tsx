@@ -48,6 +48,8 @@ export function OrderReadinessDashboard({
     updatePickupNote,
     updateParticipation,
     isSupabaseActive,
+    supabaseSchemaStatus,
+    isDemoMode,
   } = useApp();
 
   const [pickupEditing, setPickupEditing] = useState(false);
@@ -96,16 +98,20 @@ export function OrderReadinessDashboard({
   };
 
   return (
-    <div className="rounded-3xl bg-white border border-charcoal-100 p-6 shadow-sm space-y-6">
+    <div className="rounded-3xl bg-white dark:bg-slate-900 border border-charcoal-100 dark:border-slate-800 p-6 shadow-sm space-y-6">
       {/* 0. Top Sync & Recurring Window Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] pb-3 border-b border-charcoal-100">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] pb-3 border-b border-charcoal-100 dark:border-slate-800">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="flex items-center gap-1.5 font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+          <span className="flex items-center gap-1.5 font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
             <Radio className="w-3 h-3 text-emerald-500 animate-pulse" />
-            {isSupabaseActive ? 'Cloud Sync: Active (Supabase)' : 'Realtime: Multi-Tab Broadcast Active'}
+            {isSupabaseActive && supabaseSchemaStatus === 'ready' && !isDemoMode
+              ? 'Cloud Sync: Active (Supabase)'
+              : isSupabaseActive && supabaseSchemaStatus === 'migrations_missing' && !isDemoMode
+              ? 'Auth Active • Local Sync (DB Migrations Pending)'
+              : 'Realtime: Multi-Tab Broadcast Active'}
           </span>
           {session.session_name && (
-            <span className="text-charcoal-700 font-bold bg-orange-50 border border-orange-200/60 px-2.5 py-0.5 rounded-full">
+            <span className="text-charcoal-700 dark:text-slate-200 font-bold bg-orange-50 dark:bg-orange-500/20 border border-orange-200/60 dark:border-orange-500/30 px-2.5 py-0.5 rounded-full">
               🗓️ {session.session_name} ({session.recurrence || 'Weekdays'})
             </span>
           )}
@@ -123,9 +129,9 @@ export function OrderReadinessDashboard({
       </div>
 
       {/* 1. Header: Restaurant Info, Session Status & Cutoff */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-charcoal-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-charcoal-100 dark:border-slate-800">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl overflow-hidden relative bg-charcoal-100 flex-shrink-0 border border-charcoal-200/50 shadow-xs">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden relative bg-charcoal-100 dark:bg-slate-800 flex-shrink-0 border border-charcoal-200/50 dark:border-slate-700 shadow-xs">
             {session.restaurant_image ? (
               <Image
                 src={session.restaurant_image}
@@ -143,7 +149,7 @@ export function OrderReadinessDashboard({
 
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-charcoal-400 dark:text-slate-400">
                 Active Order Session
               </span>
               {session.status === 'open' ? (
@@ -158,7 +164,7 @@ export function OrderReadinessDashboard({
                 </Badge>
               )}
             </div>
-            <h2 className="text-xl font-black text-charcoal-900 leading-tight mt-0.5">
+            <h2 className="text-xl font-black text-charcoal-900 dark:text-white leading-tight mt-0.5">
               {session.restaurant_name}
             </h2>
           </div>
@@ -166,19 +172,19 @@ export function OrderReadinessDashboard({
 
         {/* Cutoff & Current Cart Total */}
         <div className="flex items-center gap-3 sm:text-right">
-          <div className="bg-swiggy-light px-3.5 py-1.5 rounded-2xl border border-swiggy-soft">
+          <div className="bg-swiggy-light dark:bg-orange-500/20 px-3.5 py-1.5 rounded-2xl border border-swiggy-soft dark:border-orange-500/30">
             <p className="text-[10px] font-black uppercase tracking-wider text-swiggy-orange flex items-center gap-1">
               <Clock className="w-3 h-3" />
               Cutoff Time
             </p>
-            <p className="text-sm font-black text-charcoal-900 mt-0.5">{timeLeftStr}</p>
+            <p className="text-sm font-black text-charcoal-900 dark:text-white mt-0.5">{timeLeftStr}</p>
           </div>
 
-          <div className="bg-charcoal-50 px-3.5 py-1.5 rounded-2xl border border-charcoal-100">
-            <p className="text-[10px] font-black uppercase tracking-wider text-charcoal-400">
+          <div className="bg-charcoal-50 dark:bg-slate-800 px-3.5 py-1.5 rounded-2xl border border-charcoal-100 dark:border-slate-700">
+            <p className="text-[10px] font-black uppercase tracking-wider text-charcoal-400 dark:text-slate-400">
               Cart Subtotal
             </p>
-            <p className="text-sm font-black text-charcoal-900 mt-0.5">
+            <p className="text-sm font-black text-charcoal-900 dark:text-white mt-0.5">
               {formatPaise(subtotalPaise)}
             </p>
           </div>
@@ -186,20 +192,20 @@ export function OrderReadinessDashboard({
       </div>
 
       {/* 2. Feature A & D: Group Readiness Status & Member Progress */}
-      <div className="bg-gradient-to-br from-charcoal-50 to-orange-50/30 rounded-2xl p-4 sm:p-5 border border-charcoal-100 space-y-4">
+      <div className="bg-gradient-to-br from-charcoal-50 to-orange-50/30 dark:from-slate-800/80 dark:to-slate-800/40 rounded-2xl p-4 sm:p-5 border border-charcoal-100 dark:border-slate-700 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black text-charcoal-900">
+              <span className="text-xs font-black text-charcoal-900 dark:text-white">
                 Squad Readiness: {readyCount} of {totalMembers} Ready ({readinessPercent}%)
               </span>
               {allReady && (
-                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                <span className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
                   All Set! 🎉
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-charcoal-500 mt-0.5">
+            <p className="text-[11px] text-charcoal-500 dark:text-slate-400 mt-0.5">
               {allReady
                 ? 'Everyone has confirmed their items! Admin can safely finalize the order.'
                 : 'Members can toggle their status when finished picking food.'}
@@ -214,13 +220,13 @@ export function OrderReadinessDashboard({
               variant={isCurrentUserReady ? 'secondary' : 'primary'}
               className={`rounded-xl text-xs font-black shadow-xs gap-1.5 transition-all ${
                 isCurrentUserReady
-                  ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300'
+                  ? 'bg-emerald-100 dark:bg-emerald-950/60 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700'
                   : 'bg-swiggy-orange hover:bg-swiggy-hover text-white'
               }`}
             >
               {isCurrentUserReady ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>I&apos;m Ready (Click to edit)</span>
                 </>
               ) : (
@@ -234,7 +240,7 @@ export function OrderReadinessDashboard({
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-charcoal-200/60 rounded-full h-2.5 overflow-hidden">
+        <div className="w-full bg-charcoal-200/60 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
           <div
             className={`h-full transition-all duration-500 rounded-full ${
               readinessPercent === 100
@@ -258,8 +264,8 @@ export function OrderReadinessDashboard({
                 key={m.user_id}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition ${
                   isReady
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                    : 'bg-white border-charcoal-200 text-charcoal-500'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+                    : 'bg-white dark:bg-slate-900 border-charcoal-200 dark:border-slate-700 text-charcoal-500 dark:text-slate-300'
                 }`}
                 title={isReady ? `${m.profile.full_name} is Ready` : `${m.profile.full_name} is still selecting`}
               >
@@ -277,7 +283,7 @@ export function OrderReadinessDashboard({
                   {m.profile.full_name.split(' ')[0]} {isSelf && '(You)'}
                 </span>
                 {isReady ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 ) : (
                   <Clock className="w-3 h-3 text-amber-500" />
                 )}
@@ -287,22 +293,22 @@ export function OrderReadinessDashboard({
         </div>
 
         {/* Participation Quick Action */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-charcoal-200/50 text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-charcoal-200/50 dark:border-slate-700 text-xs">
           <div className="flex items-center gap-2">
-            <span className="text-charcoal-500 font-medium">Squad Attendance:</span>
-            <span className="font-bold text-charcoal-900 bg-white px-2 py-0.5 rounded-md border border-charcoal-100">
+            <span className="text-charcoal-500 dark:text-slate-400 font-medium">Squad Attendance:</span>
+            <span className="font-bold text-charcoal-900 dark:text-white bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-charcoal-100 dark:border-slate-700">
               {joiningCount} Joining • {skippedCount} Skipped
             </span>
           </div>
 
           <div className="flex items-center gap-1.5 self-end sm:self-center">
-            <span className="text-[11px] text-charcoal-400 mr-1">Your status:</span>
+            <span className="text-[11px] text-charcoal-400 dark:text-slate-400 mr-1">Your status:</span>
             <button
               onClick={() => updateParticipation(session.id, currentUser.id, 'joining')}
               className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
                 myParticipation === 'joining'
                   ? 'bg-swiggy-orange text-white shadow-xs'
-                  : 'bg-white border border-charcoal-200 text-charcoal-600 hover:bg-charcoal-50'
+                  : 'bg-white dark:bg-slate-900 border border-charcoal-200 dark:border-slate-700 text-charcoal-600 dark:text-slate-300 hover:bg-charcoal-50 dark:hover:bg-slate-800'
               }`}
             >
               🍱 I&apos;m In
@@ -312,7 +318,7 @@ export function OrderReadinessDashboard({
               className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
                 myParticipation === 'skipped'
                   ? 'bg-charcoal-700 text-white shadow-xs'
-                  : 'bg-white border border-charcoal-200 text-charcoal-600 hover:bg-charcoal-50'
+                  : 'bg-white dark:bg-slate-900 border border-charcoal-200 dark:border-slate-700 text-charcoal-600 dark:text-slate-300 hover:bg-charcoal-50 dark:hover:bg-slate-800'
               }`}
             >
               ✋ Skip
@@ -326,9 +332,9 @@ export function OrderReadinessDashboard({
         <div className="flex items-center gap-2">
           <MapPin className="w-4 h-4 text-swiggy-orange flex-shrink-0" />
           <div>
-            <span className="font-bold text-charcoal-900">Campus Pickup Spot: </span>
-            <span className="text-charcoal-600 font-medium">{selectedPickup}</span>
-            <span className="text-[10px] text-charcoal-400 block sm:inline sm:ml-2">
+            <span className="font-bold text-charcoal-900 dark:text-white">Campus Pickup Spot: </span>
+            <span className="text-charcoal-600 dark:text-slate-300 font-medium">{selectedPickup}</span>
+            <span className="text-[10px] text-charcoal-400 dark:text-slate-500 block sm:inline sm:ml-2">
               (Peer coordination reference)
             </span>
           </div>
@@ -341,7 +347,7 @@ export function OrderReadinessDashboard({
                 <select
                   value={selectedPickup}
                   onChange={(e) => handleSavePickupNote(e.target.value)}
-                  className="text-xs bg-white border border-charcoal-200 rounded-xl px-2.5 py-1 text-charcoal-800 font-medium"
+                  className="text-xs bg-white dark:bg-slate-800 border border-charcoal-200 dark:border-slate-700 rounded-xl px-2.5 py-1 text-charcoal-800 dark:text-white font-medium"
                 >
                   <option value="Hostel Main Gate / Reception">Hostel Main Gate / Reception</option>
                   <option value="Campus Main Gate Security Point">Campus Main Gate Security Point</option>
@@ -369,7 +375,7 @@ export function OrderReadinessDashboard({
       </div>
 
       {/* 4. Action Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-charcoal-100">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-charcoal-100 dark:border-slate-800">
         <Link href={`/circles/${circleId}/restaurants/${session.restaurant_id}`}>
           <Button
             size="sm"
@@ -388,17 +394,17 @@ export function OrderReadinessDashboard({
               size="sm"
               variant="outline"
               onClick={handleAdminLock}
-              className="rounded-xl text-xs font-bold gap-1.5 border-charcoal-300"
+              className="rounded-xl text-xs font-bold gap-1.5 border-charcoal-300 dark:border-slate-700"
               title="Toggle Cart Lock"
             >
               {session.status === 'open' ? (
                 <>
-                  <Lock className="w-3.5 h-3.5 text-charcoal-600" />
+                  <Lock className="w-3.5 h-3.5 text-charcoal-600 dark:text-slate-300" />
                   <span>Lock Cart</span>
                 </>
               ) : (
                 <>
-                  <Unlock className="w-3.5 h-3.5 text-emerald-600" />
+                  <Unlock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>Reopen Cart</span>
                 </>
               )}

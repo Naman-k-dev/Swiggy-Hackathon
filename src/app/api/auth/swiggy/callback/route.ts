@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
   if (storedPkceRaw) {
     try {
       const parsed = JSON.parse(storedPkceRaw);
-      returnTo = parsed.returnTo || '/dashboard';
+      const rawReturnTo = parsed.returnTo || '/dashboard';
+      returnTo = rawReturnTo.startsWith('/') && !rawReturnTo.startsWith('//') ? rawReturnTo : '/dashboard';
       if (parsed.state === state) {
         codeVerifier = parsed.codeVerifier;
       }
@@ -39,9 +40,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(errorRedirect);
   }
 
+  if (storedPkceRaw && !codeVerifier) {
+    const stateErrRedirect = new URL(returnTo, request.url);
+    stateErrRedirect.searchParams.set('swiggy_error', 'invalid_oauth_state');
+    return NextResponse.redirect(stateErrRedirect);
+  }
+
   try {
+    const fallbackRedirectUri = new URL('/api/auth/swiggy/callback', request.url).toString();
     // Exchange authorization code for OAuth 2.1 access token
-    const tokenResponse = await swiggyMCPService.exchangeAuthorizationCode(code, codeVerifier);
+    const tokenResponse = await swiggyMCPService.exchangeAuthorizationCode(
+      code,
+      codeVerifier,
+      process.env.SWIGGY_REDIRECT_URI || fallbackRedirectUri
+    );
 
     // Securely set token in httpOnly cookie
     cookieStore.set('swiggy_mcp_token', JSON.stringify(tokenResponse), {

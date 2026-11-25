@@ -23,7 +23,10 @@ export async function GET() {
 
   return NextResponse.json({
     authenticated: status.isConnected,
+    isConnected: status.isConnected,
     isLive: status.isLive,
+    isSandbox: status.isSandbox,
+    mode: status.mode,
     provider: status.provider,
     statusMessage: status.statusMessage,
     expiresAt: status.expiresAt,

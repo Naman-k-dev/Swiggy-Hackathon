@@ -2,15 +2,22 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/store/demo-context';
-import { DEFAULT_CAMPUS_NAME } from '@/lib/data/mock-seed';
+import { DEFAULT_CAMPUS_NAME, INITIAL_CIRCLES } from '@/lib/data/mock-seed';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Play, Sparkles, CheckCircle2 } from 'lucide-react';
 
 export function DemoPreview() {
-  const { circles } = useApp();
-  const sampleCircle = circles[0];
+  const router = useRouter();
+  const { circles, importDemoData, isAuthenticated } = useApp();
+  const sampleCircle = circles[0] || INITIAL_CIRCLES[0];
+
+  const handleLaunchSandbox = () => {
+    importDemoData();
+    router.push(`/circles/${sampleCircle.id}`);
+  };
 
   return (
     <section className="py-20 bg-charcoal-900 text-white relative overflow-hidden">
@@ -29,26 +36,26 @@ export function DemoPreview() {
           </h2>
 
           <p className="text-charcoal-300 text-base sm:text-lg leading-relaxed">
-            We have pre-seeded a full simulation for <strong>{sampleCircle?.college || DEFAULT_CAMPUS_NAME}</strong> with 4 student personas, an active ordering session at <strong>Rolls & Bowls Co.</strong>, and live shared cart synchronisation.
+            Explore our 4-student interactive sandbox for <strong>{sampleCircle.college || DEFAULT_CAMPUS_NAME}</strong> featuring live shared carts, CircleMatch AI, CircleVote polls, and Order Rescue fallbacks.
           </p>
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-            {sampleCircle && (
-              <Link href={`/circles/${sampleCircle.id}`}>
-                <Button size="lg" className="w-full sm:w-auto font-bold text-base px-8 gap-2 shadow-lg">
-                  <Play className="w-4 h-4 fill-white" />
-                  <span>Launch Live Demo ({sampleCircle.name})</span>
-                </Button>
-              </Link>
-            )}
+            <Button
+              size="lg"
+              onClick={handleLaunchSandbox}
+              className="w-full sm:w-auto font-bold text-base px-8 gap-2 shadow-lg"
+            >
+              <Play className="w-4 h-4 fill-white" />
+              <span>Launch Sandbox Demo ({sampleCircle.name})</span>
+            </Button>
 
-            <Link href="/dashboard">
+            <Link href={isAuthenticated ? '/dashboard' : '/auth'}>
               <Button
                 variant="outline"
                 size="lg"
                 className="w-full sm:w-auto text-white border-charcoal-700 bg-charcoal-800/80 hover:bg-charcoal-700"
               >
-                Open Student Dashboard
+                {isAuthenticated ? 'Open Student Dashboard' : 'Sign In as Student'}
               </Button>
             </Link>
           </div>
@@ -56,11 +63,11 @@ export function DemoPreview() {
           <div className="pt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-charcoal-400">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              Instant 4-student persona switcher
+              One-click Sandbox Evaluation
             </span>
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              Real-time cross-tab sync
+              Cross-tab & Supabase Auth ready
             </span>
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
