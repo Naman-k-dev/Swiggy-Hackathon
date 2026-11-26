@@ -18,11 +18,17 @@ import {
   AlertCircle,
   Database,
   CheckCircle2,
+  Shield,
+  Search,
+  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import { formatPaise } from '@/lib/utils';
+import { BuddyMatchModal } from '@/components/buddymatch/BuddyMatchModal';
+import { CircleGuardActivityModal } from '@/components/security/CircleGuardActivityModal';
+import { PrivacySettingsModal } from '@/components/security/PrivacySettingsModal';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -43,6 +49,9 @@ export default function DashboardPage() {
   } = useApp();
 
   const [demoLoadedMsg, setDemoLoadedMsg] = useState(false);
+  const [buddyMatchOpen, setBuddyMatchOpen] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
 
   const handleImportDemo = () => {
     importDemoData();
@@ -54,6 +63,28 @@ export default function DashboardPage() {
     if (!isAuthenticated) {
       router.replace('/auth');
     }
+
+    const handleOpenBuddyMatch = () => {
+      setBuddyMatchOpen(true);
+    };
+
+    const handleOpenSecurity = () => {
+      setSecurityOpen(true);
+    };
+
+    const handleOpenPrivacy = () => {
+      setPrivacyOpen(true);
+    };
+
+    window.addEventListener('open-buddymatch', handleOpenBuddyMatch);
+    window.addEventListener('open-security', handleOpenSecurity);
+    window.addEventListener('open-privacy', handleOpenPrivacy);
+
+    return () => {
+      window.removeEventListener('open-buddymatch', handleOpenBuddyMatch);
+      window.removeEventListener('open-security', handleOpenSecurity);
+      window.removeEventListener('open-privacy', handleOpenPrivacy);
+    };
   }, [isAuthenticated, router]);
 
   const userCircles = getUserCircles();
@@ -293,6 +324,107 @@ export default function DashboardPage() {
           </div>
           <div className="w-10 h-10 rounded-xl glass-pill dark:bg-slate-800 dark:border-slate-700 text-swiggy-orange flex items-center justify-center">
             <Sparkles className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* BuddyMatch Discovery Section */}
+      <div id="buddymatch" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black text-charcoal-900 dark:text-white tracking-tight flex items-center gap-2">
+              <Search className="text-swiggy-orange" size={24} />
+              Find My Food Squad
+            </h2>
+            <p className="text-xs text-charcoal-500 dark:text-slate-400">
+              Discover compatible campus circles based on your meal preferences and budget
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-[2.5rem] bg-gradient-to-r from-orange-500 via-amber-500 to-swiggy-orange text-white p-6 shadow-xl relative overflow-hidden">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 bg-white/25 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
+                <span>Phase 8: BuddyMatch Discovery</span>
+              </div>
+              <h3 className="text-lg sm:text-xl font-black tracking-tight">
+                Order together. Split delivery. Save more.
+              </h3>
+              <p className="text-xs sm:text-sm text-white/90 max-w-xl leading-relaxed">
+                Campus BuddyMatch helps you find compatible ordering groups based on meal times, budgets, and cuisine preferences. Admins approve join requests for safety.
+              </p>
+            </div>
+            <Button
+              onClick={() => {
+                // Open BuddyMatch modal from Navbar
+                window.dispatchEvent(new CustomEvent('open-buddymatch'));
+              }}
+              size="lg"
+              className="bg-white text-swiggy-orange hover:bg-orange-50 font-black text-sm px-6 py-4 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2 whitespace-nowrap border-none"
+            >
+              <Users className="w-4 h-4 text-swiggy-orange" />
+              <span>Discover Compatible Squads</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* CircleGuard Security Section */}
+      <div id="security" className="space-y-4 pt-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black text-charcoal-900 dark:text-white tracking-tight flex items-center gap-2">
+              <Shield className="text-swiggy-orange" size={24} />
+              CircleGuard Security Center
+            </h2>
+            <p className="text-xs text-charcoal-500 dark:text-slate-400">
+              Monitor account activity, join request history, and privacy controls
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-2xl glass-card dark:bg-slate-900 dark:border-slate-800 p-5 shadow-sm flex items-start gap-4 border-l-4 border-swiggy-orange">
+            <div className="p-3 bg-orange-100 dark:bg-orange-950 rounded-xl text-swiggy-orange">
+              <Shield className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-charcoal-900 dark:text-white">Real-time Activity Monitoring</h4>
+              <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-1">
+                Track circle joins, request approvals, session finalizations, and security events in one timeline.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 rounded-xl text-xs font-bold border-swiggy-orange text-swiggy-orange hover:bg-orange-50 dark:hover:bg-orange-500/10"
+                onClick={() => window.dispatchEvent(new CustomEvent('open-security'))}
+              >
+                View Security Activity
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl glass-card dark:bg-slate-900 dark:border-slate-800 p-5 shadow-sm flex items-start gap-4 border-l-4 border-emerald-500">
+            <div className="p-3 bg-emerald-100 dark:bg-emerald-950 rounded-xl text-emerald-600">
+              <Lock className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-charcoal-900 dark:text-white">Privacy & Data Controls</h4>
+              <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-1">
+                Manage BuddyMatch discoverability, budget visibility, notification preferences, and opt-out anytime.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 rounded-xl text-xs font-bold border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                onClick={() => window.dispatchEvent(new CustomEvent('open-privacy'))}
+              >
+                Open Privacy Settings
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -562,6 +694,15 @@ export default function DashboardPage() {
           </div>
         </form>
       </Modal>
+
+      {/* BuddyMatch Modal */}
+      <BuddyMatchModal isOpen={buddyMatchOpen} onClose={() => setBuddyMatchOpen(false)} userProfile={currentUser} />
+
+      {/* CircleGuard Security Modal */}
+      <CircleGuardActivityModal isOpen={securityOpen} onClose={() => setSecurityOpen(false)} userId={currentUser?.id || ''} />
+
+      {/* Privacy Settings Modal */}
+      <PrivacySettingsModal isOpen={privacyOpen} onClose={() => setPrivacyOpen(false)} userProfile={currentUser} />
     </div>
   );
 }

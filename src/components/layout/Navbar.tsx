@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/lib/store/demo-context';
+import type { StudentProfile } from '@/types';
 import {
   PlusCircle,
   ShoppingBag,
@@ -15,11 +16,17 @@ import {
   Moon,
   Sparkles,
   BarChart3,
+  Users,
+  Shield,
+  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { JudgeGuideModal } from '@/components/shared/JudgeGuideModal';
 import { AnalyticsModal } from '@/components/shared/AnalyticsModal';
+import { BuddyMatchModal } from '@/components/buddymatch/BuddyMatchModal';
+import { CircleGuardActivityModal } from '@/components/security/CircleGuardActivityModal';
+import { PrivacySettingsModal } from '@/components/security/PrivacySettingsModal';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -38,6 +45,9 @@ export function Navbar() {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [buddyMatchOpen, setBuddyMatchOpen] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
 
   // Check if any joined circle has an ongoing session
   const userCircles = getUserCircles();
@@ -51,6 +61,8 @@ export function Navbar() {
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Explore', href: '/dashboard#circles' },
     { label: 'Guide', href: '/#how-it-works' },
+    { label: 'BuddyMatch', href: '/dashboard#buddymatch' },
+    { label: 'Security', href: '/dashboard#security' },
   ];
 
   return (
@@ -167,6 +179,36 @@ export function Navbar() {
                           >
                             <BarChart3 className="w-3.5 h-3.5 text-swiggy-orange" />
                             <span>AI Analytics</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setUserDropdownOpen(false);
+                              setBuddyMatchOpen(true);
+                            }}
+                            className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs font-medium text-charcoal-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition"
+                          >
+                            <Users className="w-3.5 h-3.5 text-swiggy-orange" />
+                            <span>Find Food Squad</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setUserDropdownOpen(false);
+                              setSecurityOpen(true);
+                            }}
+                            className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs font-medium text-charcoal-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition"
+                          >
+                            <Shield className="w-3.5 h-3.5 text-swiggy-orange" />
+                            <span>CircleGuard Security</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setUserDropdownOpen(false);
+                              setPrivacyOpen(true);
+                            }}
+                            className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs font-medium text-charcoal-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition"
+                          >
+                            <Lock className="w-3.5 h-3.5 text-swiggy-orange" />
+                            <span>Privacy Settings</span>
                           </button>
                           <Link
                             href="/circles/create"
@@ -292,6 +334,26 @@ export function Navbar() {
                   >
                     + Create New Circle
                   </Link>
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setBuddyMatchOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2.5 text-sm font-medium text-charcoal-800 dark:text-slate-200 hover:bg-charcoal-50 dark:hover:bg-slate-800 rounded-xl flex items-center gap-2"
+                  >
+                    <Users size={16} className="text-swiggy-orange" />
+                    Find Food Squad
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setSecurityOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2.5 text-sm font-medium text-charcoal-800 dark:text-slate-200 hover:bg-charcoal-50 dark:hover:bg-slate-800 rounded-xl flex items-center gap-2"
+                  >
+                    <Shield size={16} className="text-swiggy-orange" />
+                    CircleGuard Security
+                  </button>
                 </>
               )}
               <button
@@ -320,6 +382,9 @@ export function Navbar() {
       {/* Modals */}
       <JudgeGuideModal isOpen={guideOpen} onClose={() => setGuideOpen(false)} />
       <AnalyticsModal isOpen={analyticsOpen} onClose={() => setAnalyticsOpen(false)} />
+      <BuddyMatchModal isOpen={buddyMatchOpen} onClose={() => setBuddyMatchOpen(false)} userProfile={currentUser} />
+      <CircleGuardActivityModal isOpen={securityOpen} onClose={() => setSecurityOpen(false)} userId={currentUser?.id || ''} />
+      <PrivacySettingsModal isOpen={privacyOpen} onClose={() => setPrivacyOpen(false)} userProfile={currentUser} />
     </>
   );
 }
