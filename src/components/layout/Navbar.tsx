@@ -5,11 +5,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/lib/store/demo-context';
-import type { StudentProfile } from '@/types';
 import {
   PlusCircle,
   ShoppingBag,
-  ChevronDown,
   Menu,
   X,
   Sun,
@@ -19,14 +17,15 @@ import {
   Users,
   Shield,
   Lock,
+  FlaskConical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { JudgeGuideModal } from '@/components/shared/JudgeGuideModal';
 import { AnalyticsModal } from '@/components/shared/AnalyticsModal';
 import { BuddyMatchModal } from '@/components/buddymatch/BuddyMatchModal';
 import { CircleGuardActivityModal } from '@/components/security/CircleGuardActivityModal';
 import { PrivacySettingsModal } from '@/components/security/PrivacySettingsModal';
+import { PilotLabDashboardModal } from '@/components/pilot/PilotLabDashboardModal';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -48,6 +47,7 @@ export function Navbar() {
   const [buddyMatchOpen, setBuddyMatchOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [pilotLabOpen, setPilotLabOpen] = useState(false);
 
   // Check if any joined circle has an ongoing session
   const userCircles = getUserCircles();
@@ -106,6 +106,18 @@ export function Navbar() {
 
             {/* Right Action Tools */}
             <div className="hidden md:flex items-center gap-4">
+              {/* Pilot Lab Quick Button */}
+              {isAuthenticated && currentUser && (
+                <button
+                  onClick={() => setPilotLabOpen(true)}
+                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold text-swiggy-orange bg-orange-50 dark:bg-orange-500/10 hover:bg-orange-100 dark:hover:bg-orange-500/20 transition-colors border border-orange-200/60 dark:border-orange-500/20 shadow-sm"
+                  title="Campus Pilot Lab — Built With Students Research & Telemetry"
+                >
+                  <FlaskConical className="w-3.5 h-3.5" />
+                  <span>Pilot Lab</span>
+                </button>
+              )}
+
               {/* Theme Toggle */}
               <button
                 onClick={toggleTheme}
@@ -160,6 +172,16 @@ export function Navbar() {
                           <p className="text-[10px] text-charcoal-400 dark:text-slate-500 truncate">{currentUser.college}</p>
                         </div>
                         <div className="py-1">
+                          <button
+                            onClick={() => {
+                              setUserDropdownOpen(false);
+                              setPilotLabOpen(true);
+                            }}
+                            className="w-full text-left flex items-center gap-2 px-3 py-2 text-xs font-medium text-charcoal-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition"
+                          >
+                            <FlaskConical className="w-3.5 h-3.5 text-swiggy-orange" />
+                            <span>Campus Pilot Lab</span>
+                          </button>
                           <button
                             onClick={() => {
                               setUserDropdownOpen(false);
@@ -354,6 +376,16 @@ export function Navbar() {
                     <Shield size={16} className="text-swiggy-orange" />
                     CircleGuard Security
                   </button>
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setPilotLabOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2.5 text-sm font-medium text-charcoal-800 dark:text-slate-200 hover:bg-charcoal-50 dark:hover:bg-slate-800 rounded-xl flex items-center gap-2"
+                  >
+                    <FlaskConical size={16} className="text-swiggy-orange" />
+                    Campus Pilot Lab
+                  </button>
                 </>
               )}
               <button
@@ -385,6 +417,13 @@ export function Navbar() {
       <BuddyMatchModal isOpen={buddyMatchOpen} onClose={() => setBuddyMatchOpen(false)} userProfile={currentUser} />
       <CircleGuardActivityModal isOpen={securityOpen} onClose={() => setSecurityOpen(false)} userId={currentUser?.id || ''} />
       <PrivacySettingsModal isOpen={privacyOpen} onClose={() => setPrivacyOpen(false)} userProfile={currentUser} />
+      {currentUser && (
+        <PilotLabDashboardModal
+          isOpen={pilotLabOpen}
+          onClose={() => setPilotLabOpen(false)}
+          currentUser={currentUser}
+        />
+      )}
     </>
   );
 }

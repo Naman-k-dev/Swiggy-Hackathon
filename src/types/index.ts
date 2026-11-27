@@ -7,6 +7,7 @@ export type OrderStatus = 'placed' | 'confirmed' | 'preparing' | 'out_for_delive
 export * from './circlematch';
 export * from './circlevote';
 export * from './order-rescue';
+export * from './pilot-lab';
 
 export interface StudentProfile {
   id: string;

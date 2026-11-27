@@ -20,6 +20,7 @@ import { formatPaise } from '@/lib/utils';
 import { OrderStatus } from '@/types';
 import { PickupPassCard } from '@/components/orders/PickupPassCard';
 import { CirclePayTracker } from '@/components/orders/CirclePayTracker';
+import { PostOrderFeedbackModal } from '@/components/pilot/PostOrderFeedbackModal';
 
 interface OrderPageProps {
   params: Promise<{
@@ -49,6 +50,7 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
 
   // Simulated status progression
   const [currentStatus, setCurrentStatus] = useState<OrderStatus>(order?.status || 'placed');
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const timelineSteps: { key: OrderStatus; label: string; desc: string; icon: React.ElementType }[] = [
     { key: 'placed', label: 'Order Placed', desc: 'Received by Campus Circles engine', icon: CheckCircle2 },
@@ -334,7 +336,33 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-charcoal-100 dark:border-slate-800 flex flex-col gap-2">
+          {/* Campus Pilot Research Prompt */}
+          <div className="pt-3 border-t border-charcoal-100 dark:border-slate-800 space-y-2">
+            <div className="rounded-2xl bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-transparent p-3.5 border border-orange-200/60 dark:border-orange-500/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-[11px] text-charcoal-900 dark:text-white flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-swiggy-orange" />
+                  Campus Pilot Feedback
+                </span>
+                <span className="px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-950 text-swiggy-orange text-[9px] font-bold">
+                  30s VOLUNTARY
+                </span>
+              </div>
+              <p className="text-[10px] text-charcoal-500 dark:text-slate-400">
+                Help student researchers at PW IOI evaluate group ordering ease.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setFeedbackOpen(true)}
+                className="w-full rounded-xl text-xs font-bold text-swiggy-orange border-orange-300 dark:border-orange-500/40 hover:bg-orange-50 dark:hover:bg-orange-500/10"
+              >
+                Rate Group Ordering Flow
+              </Button>
+            </div>
+          </div>
+
+          <div className="pt-2 flex flex-col gap-2">
             <Link href="/dashboard">
               <Button size="md" className="w-full rounded-2xl text-xs font-bold shadow-md">
                 Return to Student Dashboard
@@ -343,6 +371,16 @@ export default function OrderTrackingPage({ params }: OrderPageProps) {
           </div>
         </div>
       </div>
+
+      {currentUser && (
+        <PostOrderFeedbackModal
+          isOpen={feedbackOpen}
+          onClose={() => setFeedbackOpen(false)}
+          orderId={order.id}
+          circleId={circleId}
+          userId={currentUser.id}
+        />
+      )}
     </div>
   );
 }

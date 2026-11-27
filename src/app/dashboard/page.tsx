@@ -21,6 +21,7 @@ import {
   Shield,
   Search,
   Lock,
+  FlaskConical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,7 @@ import { formatPaise } from '@/lib/utils';
 import { BuddyMatchModal } from '@/components/buddymatch/BuddyMatchModal';
 import { CircleGuardActivityModal } from '@/components/security/CircleGuardActivityModal';
 import { PrivacySettingsModal } from '@/components/security/PrivacySettingsModal';
+import { PilotLabDashboardModal } from '@/components/pilot/PilotLabDashboardModal';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -52,6 +54,7 @@ export default function DashboardPage() {
   const [buddyMatchOpen, setBuddyMatchOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [pilotLabOpen, setPilotLabOpen] = useState(false);
 
   const handleImportDemo = () => {
     importDemoData();
@@ -76,14 +79,20 @@ export default function DashboardPage() {
       setPrivacyOpen(true);
     };
 
+    const handleOpenPilotLab = () => {
+      setPilotLabOpen(true);
+    };
+
     window.addEventListener('open-buddymatch', handleOpenBuddyMatch);
     window.addEventListener('open-security', handleOpenSecurity);
     window.addEventListener('open-privacy', handleOpenPrivacy);
+    window.addEventListener('open-pilot-lab', handleOpenPilotLab);
 
     return () => {
       window.removeEventListener('open-buddymatch', handleOpenBuddyMatch);
       window.removeEventListener('open-security', handleOpenSecurity);
       window.removeEventListener('open-privacy', handleOpenPrivacy);
+      window.removeEventListener('open-pilot-lab', handleOpenPilotLab);
     };
   }, [isAuthenticated, router]);
 
@@ -157,6 +166,17 @@ export default function DashboardPage() {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => setPilotLabOpen(true)}
+            className="glass-pill dark:bg-slate-900 dark:border-orange-500/30 text-swiggy-orange hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-2xl gap-1.5 text-xs font-bold"
+            title="Campus Pilot Lab — Student Empirical Research & Telemetry"
+          >
+            <FlaskConical className="w-3.5 h-3.5 text-swiggy-orange" />
+            <span>Pilot Lab</span>
+          </Button>
+
           <Button
             variant="outline"
             size="md"
@@ -703,6 +723,9 @@ export default function DashboardPage() {
 
       {/* Privacy Settings Modal */}
       <PrivacySettingsModal isOpen={privacyOpen} onClose={() => setPrivacyOpen(false)} userProfile={currentUser} />
+
+      {/* Campus Pilot Lab Modal */}
+      <PilotLabDashboardModal isOpen={pilotLabOpen} onClose={() => setPilotLabOpen(false)} currentUser={currentUser} />
     </div>
   );
 }
